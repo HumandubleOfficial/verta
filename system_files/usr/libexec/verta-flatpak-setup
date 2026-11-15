@@ -1,0 +1,23 @@
+#!/usr/bin/bash
+# First-boot setup: make sure the full (unfiltered) Flathub remote exists and
+# install Verta's default gaming apps system-wide. Flatpaks live in /var, which
+# is not part of the OS image, so they are installed here instead of at build time.
+set -euo pipefail
+
+STAMP=/var/lib/verta/flatpak-setup.done
+
+APPS=(
+    com.heroicgameslauncher.hgl   # Heroic: Epic / GOG / Amazon games
+    net.lutris.Lutris             # Lutris: everything else (Battle.net, emulators, ...)
+    net.davidotek.pupgui2         # ProtonUp-Qt: install Proton-GE / Wine-GE
+    com.github.tchx84.Flatseal    # Flatseal: Flatpak permissions
+)
+
+flatpak remote-add --system --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+# Fedora ships Flathub filtered and/or disabled; use the whole catalogue.
+flatpak remote-modify --system --no-filter --enable flathub
+
+flatpak install --system --noninteractive --assumeyes flathub "${APPS[@]}"
+
+mkdir -p "$(dirname "$STAMP")"
+touch "$STAMP"

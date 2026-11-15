@@ -1,0 +1,7 @@
+# Verta: pick the I/O scheduler that suits each kind of disk.
+# NVMe: no scheduler (the drive's own queues are faster than any software one).
+ACTION=="add|change", KERNEL=="nvme[0-9]*n[0-9]*", ATTR{queue/scheduler}="none"
+# SATA SSD / eMMC / SD: mq-deadline keeps latency low under load.
+ACTION=="add|change", KERNEL=="sd[a-z]*|mmcblk[0-9]*", ATTR{queue/rotational}=="0", ATTR{queue/scheduler}="mq-deadline"
+# Hard drives: bfq keeps the desktop responsive while a game library copies.
+ACTION=="add|change", KERNEL=="sd[a-z]*", ATTR{queue/rotational}=="1", ATTR{queue/scheduler}="bfq"

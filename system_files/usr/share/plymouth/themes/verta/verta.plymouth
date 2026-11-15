@@ -1,0 +1,58 @@
+[Plymouth Theme]
+Name=Verta
+Description=Verta boot splash: the orbit ring spinning around the V
+ModuleName=two-step
+
+[two-step]
+Font=Inter 12
+TitleFont=Inter Light 30
+# watermark.png (the V) and throbber-*.png (the ring, 36 frames) are rendered
+# from art/ by render-art.sh. Both are 200x200 and use the same alignment, so
+# the ring spins exactly around the V. Password entry and lock icons are copied
+# from the stock "spinner" theme at build time.
+ImageDir=/usr/share/plymouth/themes/verta
+DialogHorizontalAlignment=.5
+DialogVerticalAlignment=.75
+TitleHorizontalAlignment=.5
+TitleVerticalAlignment=.382
+HorizontalAlignment=.5
+VerticalAlignment=.45
+WatermarkHorizontalAlignment=.5
+WatermarkVerticalAlignment=.45
+Transition=fade-over
+TransitionDuration=0.4
+BackgroundStartColor=0x040814
+BackgroundEndColor=0x040814
+ProgressBarBackgroundColor=0x1e293b
+ProgressBarForegroundColor=0x3b82f6
+MessageBelowAnimation=true
+
+[boot-up]
+UseEndAnimation=false
+
+[shutdown]
+UseEndAnimation=false
+
+[reboot]
+UseEndAnimation=false
+
+[updates]
+SuppressMessages=true
+ProgressBarShowPercentComplete=true
+UseProgressBar=true
+Title=Installing Updates...
+SubTitle=Do not turn off your computer
+
+[system-upgrade]
+SuppressMessages=true
+ProgressBarShowPercentComplete=true
+UseProgressBar=true
+Title=Upgrading Verta...
+SubTitle=Do not turn off your computer
+
+[firmware-upgrade]
+SuppressMessages=true
+ProgressBarShowPercentComplete=true
+UseProgressBar=true
+Title=Upgrading Firmware...
+SubTitle=Do not turn off your computer

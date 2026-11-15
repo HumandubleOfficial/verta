@@ -1,0 +1,71 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="3840" height="2160" viewBox="0 0 3840 2160">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#02040b"/>
+      <stop offset="0.55" stop-color="#081430"/>
+      <stop offset="1" stop-color="#02040a"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.66" cy="0.46" r="0.5">
+      <stop offset="0" stop-color="#2f6bff" stop-opacity="0.42"/>
+      <stop offset="0.45" stop-color="#1d4ed8" stop-opacity="0.12"/>
+      <stop offset="1" stop-color="#1d4ed8" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="vignette" cx="0.5" cy="0.5" r="0.75">
+      <stop offset="0.6" stop-color="#000000" stop-opacity="0"/>
+      <stop offset="1" stop-color="#000000" stop-opacity="0.6"/>
+    </radialGradient>
+    <linearGradient id="ring" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#8bbcff"/>
+      <stop offset="1" stop-color="#1d4ed8"/>
+    </linearGradient>
+    <linearGradient id="v" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#d6e6ff"/>
+      <stop offset="1" stop-color="#3b82f6"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="3840" height="2160" fill="url(#bg)"/>
+  <rect width="3840" height="2160" fill="url(#glow)"/>
+
+  <!-- stars -->
+  <g fill="#cfe0ff">
+    <circle cx="180" cy="160" r="3" opacity="0.7"/><circle cx="420" cy="420" r="2" opacity="0.5"/>
+    <circle cx="640" cy="120" r="2.5" opacity="0.6"/><circle cx="900" cy="300" r="2" opacity="0.4"/>
+    <circle cx="1150" cy="90" r="3" opacity="0.5"/><circle cx="1380" cy="260" r="2" opacity="0.6"/>
+    <circle cx="1620" cy="140" r="2.5" opacity="0.4"/><circle cx="1880" cy="380" r="2" opacity="0.5"/>
+    <circle cx="2140" cy="110" r="3" opacity="0.6"/><circle cx="2460" cy="240" r="2" opacity="0.4"/>
+    <circle cx="2780" cy="90" r="2.5" opacity="0.5"/><circle cx="3080" cy="200" r="2" opacity="0.6"/>
+    <circle cx="3360" cy="120" r="3" opacity="0.5"/><circle cx="3640" cy="320" r="2" opacity="0.4"/>
+    <circle cx="260" cy="760" r="2" opacity="0.4"/><circle cx="560" cy="980" r="3" opacity="0.5"/>
+    <circle cx="820" cy="700" r="2" opacity="0.6"/><circle cx="1040" cy="1180" r="2.5" opacity="0.4"/>
+    <circle cx="1300" cy="860" r="2" opacity="0.5"/><circle cx="1560" cy="1320" r="2" opacity="0.4"/>
+    <circle cx="140" cy="1400" r="2.5" opacity="0.5"/><circle cx="460" cy="1640" r="2" opacity="0.4"/>
+    <circle cx="760" cy="1900" r="3" opacity="0.5"/><circle cx="1100" cy="1700" r="2" opacity="0.6"/>
+    <circle cx="1420" cy="2020" r="2" opacity="0.4"/><circle cx="1760" cy="1820" r="2.5" opacity="0.5"/>
+    <circle cx="2080" cy="2040" r="2" opacity="0.4"/><circle cx="2400" cy="1880" r="3" opacity="0.5"/>
+    <circle cx="2900" cy="2000" r="2" opacity="0.5"/><circle cx="3260" cy="1820" r="2.5" opacity="0.4"/>
+    <circle cx="3560" cy="1960" r="2" opacity="0.6"/><circle cx="3700" cy="1500" r="3" opacity="0.5"/>
+    <circle cx="3480" cy="1180" r="2" opacity="0.4"/><circle cx="3720" cy="840" r="2.5" opacity="0.5"/>
+    <circle cx="1820" cy="620" r="2" opacity="0.4"/><circle cx="1980" cy="1500" r="2" opacity="0.5"/>
+  </g>
+
+  <!-- orbits around the mark -->
+  <g fill="none" stroke="#3b82f6" transform="rotate(-16 2540 1000)">
+    <ellipse cx="2540" cy="1000" rx="1500" ry="520" stroke-width="3" stroke-opacity="0.08"/>
+    <ellipse cx="2540" cy="1000" rx="1120" ry="390" stroke-width="3" stroke-opacity="0.14"/>
+    <ellipse cx="2540" cy="1000" rx="760" ry="265" stroke-width="2" stroke-opacity="0.2"/>
+  </g>
+  <!-- planets sitting on the inner and middle orbits -->
+  <circle cx="1809" cy="1209" r="16" fill="#8bbcff" opacity="0.85"/>
+  <circle cx="3617" cy="691" r="10" fill="#5b9bff" opacity="0.7"/>
+
+  <!-- the Verta mark (art/logo.svg at 2.1x) -->
+  <g transform="translate(2002.4 462.4) scale(2.1)">
+    <circle cx="256" cy="256" r="200" fill="none" stroke="url(#ring)" stroke-width="28"
+            stroke-linecap="round" stroke-dasharray="1000 256.6" transform="rotate(-8.25 256 256)"/>
+    <circle cx="397.4" cy="114.6" r="20" fill="#8bbcff"/>
+    <polygon points="152,152 208,152 256,272 304,152 360,152 256,384" fill="url(#v)"/>
+  </g>
+
+  <rect width="3840" height="2160" fill="url(#vignette)"/>
+</svg>

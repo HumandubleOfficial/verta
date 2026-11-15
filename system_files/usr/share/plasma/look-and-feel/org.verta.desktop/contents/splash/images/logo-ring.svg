@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <!-- Ring + moon of the Verta mark. render-art.sh rotates the group below to
+       make the boot-splash spinner frames, so keep "rotate(0 256 256)" as is. -->
+  <defs>
+    <linearGradient id="ring" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#8bbcff"/>
+      <stop offset="1" stop-color="#1d4ed8"/>
+    </linearGradient>
+  </defs>
+  <g transform="rotate(0 256 256)">
+    <circle cx="256" cy="256" r="200" fill="none" stroke="url(#ring)" stroke-width="28"
+            stroke-linecap="round" stroke-dasharray="1000 256.6" transform="rotate(-8.25 256 256)"/>
+    <circle cx="397.4" cy="114.6" r="20" fill="#8bbcff"/>
+  </g>
+</svg>

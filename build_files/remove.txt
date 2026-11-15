@@ -1,0 +1,16 @@
+# Packages removed from the base image (only if nothing else needs them).
+# One app per line (list its own -libs packages on the same line so they go
+# together); anything after # is ignored.
+
+plasma-welcome                  # Fedora's welcome tour
+kde-connect kde-connect-libs    # phone integration daemon (runs at every login)
+krfb krfb-libs                  # desktop sharing / VNC server
+kwalletmanager5     # wallet manager UI (the wallet itself stays)
+kjournald           # system log viewer
+kdebugsettings      # KDE debug-logging settings
+kcharselect         # character picker
+kfind               # file search (Dolphin and KRunner already search)
+khelpcenter         # offline KDE handbook
+kwrite              # duplicate of Kate
+htop                # btop is installed instead
+firewall-config     # firewalld GUI (the firewall stays on)

@@ -1,0 +1,25 @@
+[kdeglobals][KDE]
+widgetStyle=Breeze
+
+[kdeglobals][General]
+ColorScheme=VertaDark
+
+[kdeglobals][Icons]
+Theme=Papirus-Dark
+
+[plasmarc][Theme]
+# "default" is Breeze that follows the colour scheme (breeze-dark would force grey).
+name=default
+
+[Wallpaper]
+Image=Verta
+
+[kcminputrc][Mouse]
+cursorTheme=breeze_cursors
+
+[kwinrc][org.kde.kdecoration2]
+library=org.kde.breeze
+theme=Breeze
+
+[ksplashrc][KSplash]
+Theme=org.verta.desktop

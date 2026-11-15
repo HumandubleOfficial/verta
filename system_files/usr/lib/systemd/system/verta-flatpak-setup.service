@@ -1,0 +1,23 @@
+[Unit]
+Description=Verta: install gaming apps from Flathub on first boot
+Documentation=file:///usr/libexec/verta-flatpak-setup
+Wants=network-online.target
+After=network-online.target
+# Runs until it succeeds once; the script writes this stamp file at the end.
+ConditionPathExists=!/var/lib/verta/flatpak-setup.done
+StartLimitIntervalSec=0
+
+[Service]
+# "exec", not "oneshot": a big download must not hold up the rest of boot.
+Type=exec
+# Verta doesn't wait for the network during boot, so wait for it here.
+ExecStartPre=/usr/bin/nm-online -q -t 300
+ExecStart=/usr/libexec/verta-flatpak-setup
+# Still offline, or Flathub hiccuped? Try again shortly.
+Restart=on-failure
+RestartSec=60
+Nice=10
+IOSchedulingClass=idle
+
+[Install]
+WantedBy=multi-user.target

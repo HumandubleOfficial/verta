@@ -1,0 +1,30 @@
+# bootc-image-builder settings for the Verta installer ISO.
+# The installer asks for disk, language, time zone and the first user account.
+
+[customizations.installer.modules]
+enable = [
+  "org.fedoraproject.Anaconda.Modules.Localization",
+  "org.fedoraproject.Anaconda.Modules.Timezone",
+  "org.fedoraproject.Anaconda.Modules.Users",
+]
+
+# Verta's kernel and drivers are signed with Universal Blue's key. Queue that key
+# for enrolment so Secure Boot accepts them: on the first reboot a blue
+# "Perform MOK management" screen appears -> Enroll MOK -> Continue -> Yes ->
+# password "universalblue" -> Reboot. Does nothing on PCs with Secure Boot off.
+#
+# Runs in the installer itself (--nochroot): only there are the firmware's EFI
+# variables reachable. brand-iso.sh puts the key on the ISO, which the installer
+# mounts at /run/install/repo.
+[customizations.installer.kickstart]
+contents = """
+%post --nochroot --erroronfail --log=/tmp/verta-secureboot.log
+set -x
+KEY=/run/install/repo/verta-secureboot.der
+if [ -d /sys/firmware/efi/efivars ] && [ -f "$KEY" ]; then
+    mokutil --timeout -1 || :
+    printf 'universalblue\\nuniversalblue\\n' | mokutil --import "$KEY" || :
+    mokutil --list-new || :
+fi
+%end
+"""

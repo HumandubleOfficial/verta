@@ -1,0 +1,40 @@
+# RPM packages layered into every Verta image.
+# One package per line; blank lines and anything after # are ignored.
+
+# Steam (from RPM Fusion nonfree) + controller/VR udev rules
+steam
+steam-devices
+
+# Compositor for fullscreen/upscaled games (gamescope -- %command% in Steam)
+gamescope
+
+# Performance overlay (64- and 32-bit so it works in older games too) and its GUI
+mangohud
+mangohud.i686
+goverlay
+
+# CPU governor / priority tweaks while a game runs (gamemoderun %command%)
+gamemode
+gamemode.i686
+
+# Post-processing (sharpening, SMAA) for Vulkan games
+vkBasalt
+
+# GPU fan/clock/power control (mainly AMD)
+corectrl
+
+# System monitoring
+btop
+
+# Verta theme: icon set (dark variant, blue folders), UI font, rounded
+# window corners with outline glow (KDE-Rounded-Corners COPR)
+papirus-icon-theme
+rsms-inter-fonts
+kwin-effect-roundcorners
+
+# Performance (CachyOS add-ons COPR): sched-ext CPU schedulers + loader, and
+# ananicy-cpp with CachyOS' process priority rules
+scx-scheds
+scx-tools
+ananicy-cpp
+cachyos-ananicy-rules

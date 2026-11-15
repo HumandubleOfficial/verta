@@ -1,0 +1,38 @@
+/* Verta installer theme. brand-iso.sh installs this over the installer's
+ * fedora.css (the stylesheet Anaconda's Fedora profile loads) and the images
+ * into /usr/share/anaconda/pixmaps/verta/. */
+
+@define-color verta #0b1530;
+@define-color verta_accent #2563eb;
+
+.logo-sidebar {
+    background-image: url('/usr/share/anaconda/pixmaps/verta/sidebar-bg.png');
+    background-color: @verta;
+    background-repeat: no-repeat;
+    background-size: cover;
+}
+
+.logo {
+    background-image: url('/usr/share/anaconda/pixmaps/verta/sidebar-logo.png');
+    background-position: 50% 28px;
+    background-repeat: no-repeat;
+    background-color: transparent;
+}
+
+.product-logo {
+    background-image: none;
+    background-color: transparent;
+}
+
+AnacondaSpokeWindow #nav-box {
+    background-color: @verta;
+    background-image: url('/usr/share/anaconda/pixmaps/verta/topbar-bg.png');
+    background-repeat: no-repeat;
+    background-size: cover;
+    color: white;
+}
+
+AnacondaSpokeWindow #nav-box GtkButton,
+AnacondaSpokeWindow #nav-box button {
+    box-shadow: none;
+}

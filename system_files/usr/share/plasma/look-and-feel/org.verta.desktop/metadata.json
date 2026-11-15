@@ -1,0 +1,15 @@
+{
+    "KPackageStructure": "Plasma/LookAndFeel",
+    "KPlugin": {
+        "Authors": [
+            {
+                "Name": "Verta"
+            }
+        ],
+        "Category": "",
+        "Description": "Dark desktop with dark-blue accents, a slim top bar and a floating dock",
+        "Id": "org.verta.desktop",
+        "License": "GPLv2+",
+        "Name": "Verta"
+    }
+}
