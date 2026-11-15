@@ -3,8 +3,8 @@ Description=Verta: install gaming apps from Flathub on first boot
 Documentation=file:///usr/libexec/verta-flatpak-setup
 Wants=network-online.target
 After=network-online.target
-# Runs until it succeeds once; the script writes this stamp file at the end.
-ConditionPathExists=!/var/lib/verta/flatpak-setup.done
+# Runs each boot until it succeeds; the script itself exits straight away once
+# its current app list is installed (stamp file in /var/lib/verta).
 StartLimitIntervalSec=0
 
 [Service]

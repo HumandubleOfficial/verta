@@ -1,54 +1,53 @@
-// Verta default desktop: a slim frosted-glass top bar (launcher, clock, tray)
-// and a floating, centred glass dock with pinned games apps. Used for every
-// new user. Panels are translucent with blur by default (Breeze Plasma style +
-// KWin blur, tuned in build_files/30-desktop.sh).
+// Verta default desktop: one floating glass taskbar at the bottom, Windows 11
+// style. The Verta start button and pinned/open apps sit in the centre; the
+// tray, clock and "show desktop" corner sit on the right. Used for every new
+// user (and copied into the Verta Light theme at build time).
 
-// --- Top bar ---------------------------------------------------------------
 var bar = new Panel;
-bar.location = "top";
-bar.height = 2 * Math.ceil(gridUnit * 1.6 / 2);
-bar.floating = false;
+bar.location = "bottom";
+bar.height = 2 * Math.ceil(gridUnit * 2.7 / 2);
+bar.floating = true;
 bar.hiding = "none";
+bar.lengthMode = "fill";
 
-var launcher = bar.addWidget("org.kde.plasma.kickoff");
-launcher.currentConfigGroup = ["General"];
-launcher.writeConfig("icon", "verta-logo");
+// Two expanding spacers either side of the start button + apps centre them.
+bar.addWidget("org.kde.plasma.panelspacer");
+
+var start = bar.addWidget("org.kde.plasma.kickoff");
+start.currentConfigGroup = ["General"];
+start.writeConfig("icon", "verta-logo");
+start.writeConfig("favoritesDisplay", "0");      // pinned apps as a grid
+start.writeConfig("applicationsDisplay", "1");   // all apps as a list
+start.writeConfig("compactMode", "false");
+
+var tasks = bar.addWidget("org.kde.plasma.icontasks");
+tasks.currentConfigGroup = ["General"];
+tasks.writeConfig("launchers", [
+    "applications:org.kde.dolphin.desktop",
+    "applications:org.mozilla.firefox.desktop",
+    "applications:steam.desktop",
+    "applications:com.heroicgameslauncher.hgl.desktop",
+    "applications:org.kde.discover.desktop",
+    "applications:org.verta.Settings.desktop"
+].join(","));
+tasks.writeConfig("iconSpacing", "2");
+tasks.writeConfig("indicateAudioStreams", "true");
+tasks.writeConfig("groupingStrategy", "1");      // group windows of one app
+tasks.writeConfig("middleClickAction", "NewInstance");
 
 bar.addWidget("org.kde.plasma.panelspacer");
+
+bar.addWidget("org.kde.plasma.systemtray");
 
 var clock = bar.addWidget("org.kde.plasma.digitalclock");
 clock.currentConfigGroup = ["Appearance"];
 clock.writeConfig("showDate", "true");
-clock.writeConfig("dateDisplayFormat", "BesideTime");
+clock.writeConfig("dateDisplayFormat", "BelowTime"); // time over date, like Windows
+clock.writeConfig("dateFormat", "shortDate");
 
-bar.addWidget("org.kde.plasma.panelspacer");
-bar.addWidget("org.kde.plasma.systemtray");
+bar.addWidget("org.kde.plasma.showdesktop");          // "peek" corner, like Windows
 
-// --- Dock ------------------------------------------------------------------
-var dock = new Panel;
-dock.location = "bottom";
-dock.height = Math.round(gridUnit * 3.8);
-dock.alignment = "center";
-dock.lengthMode = "fit";
-dock.hiding = "dodgewindows";
-dock.floating = true;
-
-var tasks = dock.addWidget("org.kde.plasma.icontasks");
-tasks.currentConfigGroup = ["General"];
-tasks.writeConfig("launchers", [
-    "applications:steam.desktop",
-    "applications:com.heroicgameslauncher.hgl.desktop",
-    "applications:net.lutris.Lutris.desktop",
-    "applications:org.mozilla.firefox.desktop",
-    "applications:org.kde.dolphin.desktop",
-    "applications:org.kde.konsole.desktop",
-    "applications:org.kde.discover.desktop",
-    "applications:systemsettings.desktop"
-].join(","));
-tasks.writeConfig("iconSpacing", "2");
-tasks.writeConfig("indicateAudioStreams", "true");
-
-// --- Desktop wallpaper -----------------------------------------------------
+// Desktop wallpaper.
 desktopsForActivity(currentActivity()).forEach(function (desktop) {
     desktop.wallpaperPlugin = "org.kde.image";
     desktop.currentConfigGroup = ["Wallpaper", "org.kde.image", "General"];

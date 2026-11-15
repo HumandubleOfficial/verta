@@ -42,6 +42,6 @@ RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
     KERNEL_FLAVOR="${KERNEL_FLAVOR}" \
     VERTA_FLAVOR="${VERTA_FLAVOR}" \
     VERTA_VERSION="${VERTA_VERSION}" \
-    /ctx/build.sh
+    bash /ctx/build.sh
 
 RUN bootc container lint

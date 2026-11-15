@@ -26,6 +26,13 @@ corectrl
 # System monitoring
 btop
 
+# App support: Android apps (Waydroid; AMD/Intel GPUs), AppImages (FUSE 2).
+# Windows .exe apps (Bottles), Linux apps from other distros (BoxBuddy for
+# Distrobox, which is in the base image) and AppImage integration (Gear Lever)
+# are Flatpaks installed on first boot (verta-flatpak-setup).
+waydroid
+fuse-libs
+
 # Verta theme: icon set (dark variant, blue folders), UI font, rounded
 # window corners with outline glow (KDE-Rounded-Corners COPR)
 papirus-icon-theme

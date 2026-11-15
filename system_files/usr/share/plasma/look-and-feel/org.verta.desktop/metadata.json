@@ -7,9 +7,9 @@
             }
         ],
         "Category": "",
-        "Description": "Dark desktop with dark-blue accents, a slim top bar and a floating dock",
+        "Description": "Verta in dark: glass on deep navy with blue accents",
         "Id": "org.verta.desktop",
         "License": "GPLv2+",
-        "Name": "Verta"
+        "Name": "Verta Dark"
     }
 }

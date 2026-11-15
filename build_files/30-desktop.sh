@@ -8,9 +8,31 @@ set -xeuo pipefail
 KDE_XDG=/usr/share/kde-settings/kde-profile/default/xdg
 kset() { kwriteconfig6 --file "$KDE_XDG/$1" --group "$2" --key "$3" "$4"; }
 
-### Global theme (colours, icons, splash, panel layout) ######################
+### Global themes: Verta Dark (default) and Verta Light ######################
 sed -i 's/^LookAndFeelPackage=.*/LookAndFeelPackage=org.verta.desktop/' "$KDE_XDG/kdeglobals"
 grep -q '^LookAndFeelPackage=org.verta.desktop' "$KDE_XDG/kdeglobals"
+# Plasma's light/dark switch flips between these two (stock: Breeze Light/Dark,
+# which is what dropped Verta's colours when switching).
+kset kdeglobals KDE DefaultDarkLookAndFeel  org.verta.desktop
+kset kdeglobals KDE DefaultLightLookAndFeel org.verta.light
+kset kdeglobals Icons Theme Verta
+# Verta Light shares the taskbar layout and login splash with Verta Dark.
+LAF=/usr/share/plasma/look-and-feel
+cp -r "$LAF/org.verta.desktop/contents/layouts" "$LAF/org.verta.light/contents/"
+cp -r "$LAF/org.verta.desktop/contents/splash"  "$LAF/org.verta.light/contents/"
+# Verta Light uses the same app/folder icons (they work on both backgrounds);
+# only what it inherits differs (light Papirus/Breeze for everything else).
+ln -sfn ../Verta/scalable /usr/share/icons/Verta-Light/scalable
+gtk-update-icon-cache -f /usr/share/icons/Verta
+gtk-update-icon-cache -f /usr/share/icons/Verta-Light
+
+### Windows feel: familiar shortcuts and task switcher ########################
+SC() { kwriteconfig6 --file "$KDE_XDG/kglobalshortcutsrc" --group services --group "$1" --key "$2" "$3"; }
+SC org.kde.dolphin.desktop               _launch                     'Meta+E'
+SC org.kde.spectacle.desktop             RectangularRegionScreenShot 'Meta+Shift+S'
+SC org.kde.plasma-systemmonitor.desktop  _launch                     'Ctrl+Shift+Esc'
+SC org.verta.Settings.desktop            _launch                     'Meta+I'
+kset kwinrc TabBox LayoutName thumbnail_grid      # Alt+Tab shows window thumbnails
 
 ### Fonts: Inter for the UI #################################################
 INTER='Inter,10,-1,5,400,0,0,0,0,0,0,0,0,0,0,1'

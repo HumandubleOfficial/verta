@@ -1,0 +1,3 @@
+#!/usr/bin/sh
+# Verta Settings (org.verta.Settings): see /usr/share/verta-settings/main.py
+exec /usr/bin/python3 -I /usr/share/verta-settings/main.py "$@"

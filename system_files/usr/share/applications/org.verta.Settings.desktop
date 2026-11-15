@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=Settings
+GenericName=Verta Settings
+Comment=Appearance, display, sound, gaming, apps and updates
+Exec=verta-settings
+Icon=org.verta.Settings
+Categories=Settings;Qt;KDE;
+Keywords=settings;preferences;theme;dark;light;wallpaper;volume;update;gaming;performance;
+StartupNotify=true
+StartupWMClass=verta-settings
+X-KDE-Shortcuts=Meta+I

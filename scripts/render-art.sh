@@ -46,6 +46,18 @@ for i in $(seq 1 36); do
 done
 rm -rf "$TMP"
 
+### Verta icon theme (app tiles + folders, generated) #########################
+### Verta-Light gets only an index.theme here; it shares Verta's icons through
+### a symlink made at build time (30-desktop.sh) and inherits light Papirus.
+TMP="$(mktemp -d)"
+python3 -I "$ART/icons/make-icons.py" "$TMP"
+ICONS="$SF/usr/share/icons"
+rm -rf "$ICONS/Verta" "$ICONS/Verta-Light"
+cp -r "$TMP/Verta" "$TMP/Verta-Light" "$ICONS/"
+rsvg-convert -w 1120 "$TMP/preview.svg" -o "$ART/icons/preview.png"
+install_to "$ICONS/Verta/scalable/apps/org.verta.Settings.svg" "$ICONS/hicolor/scalable/apps/org.verta.Settings.svg"
+rm -rf "$TMP"
+
 ### Installer (Anaconda) sidebar, top bar and header; used by brand-iso.sh ###
 PIX="$ROOT/installer/pixmaps"
 mkdir -p "$PIX"

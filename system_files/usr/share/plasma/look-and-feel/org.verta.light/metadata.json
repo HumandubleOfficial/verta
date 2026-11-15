@@ -1,0 +1,15 @@
+{
+    "KPackageStructure": "Plasma/LookAndFeel",
+    "KPlugin": {
+        "Authors": [
+            {
+                "Name": "Verta"
+            }
+        ],
+        "Category": "",
+        "Description": "Verta in light: bright glass with blue accents",
+        "Id": "org.verta.light",
+        "License": "GPLv2+",
+        "Name": "Verta Light"
+    }
+}

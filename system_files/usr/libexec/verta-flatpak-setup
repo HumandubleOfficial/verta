@@ -1,17 +1,31 @@
 #!/usr/bin/bash
-# First-boot setup: make sure the full (unfiltered) Flathub remote exists and
-# install Verta's default gaming apps system-wide. Flatpaks live in /var, which
-# is not part of the OS image, so they are installed here instead of at build time.
+# Make sure the full (unfiltered) Flathub remote exists and install Verta's
+# default apps system-wide. Flatpaks live in /var, which is not part of the OS
+# image, so they are installed here instead of at build time.
+#
+# Runs at boot until it succeeds once per APPS_VERSION: bump APPS_VERSION when
+# APPS changes so systems that already ran it pick up the new apps after an
+# OS update. Already-installed apps are skipped.
 set -euo pipefail
 
-STAMP=/var/lib/verta/flatpak-setup.done
+APPS_VERSION=2
+STAMP_DIR=/var/lib/verta
+STAMP="$STAMP_DIR/flatpak-setup-v${APPS_VERSION}.done"
 
 APPS=(
+    # Games
     com.heroicgameslauncher.hgl   # Heroic: Epic / GOG / Amazon games
     net.lutris.Lutris             # Lutris: everything else (Battle.net, emulators, ...)
     net.davidotek.pupgui2         # ProtonUp-Qt: install Proton-GE / Wine-GE
+    # App support
+    com.usebottles.bottles        # Bottles: run Windows .exe / .msi programs
+    io.github.dvlv.boxbuddyrs     # BoxBuddy: apps from Ubuntu, Arch, ... (Distrobox)
+    it.mijorus.gearlever          # Gear Lever: run and integrate AppImages
+    # Tools
     com.github.tchx84.Flatseal    # Flatseal: Flatpak permissions
 )
+
+[ -e "$STAMP" ] && exit 0
 
 flatpak remote-add --system --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
 # Fedora ships Flathub filtered and/or disabled; use the whole catalogue.
@@ -19,5 +33,14 @@ flatpak remote-modify --system --no-filter --enable flathub
 
 flatpak install --system --noninteractive --assumeyes flathub "${APPS[@]}"
 
-mkdir -p "$(dirname "$STAMP")"
+# Double-clicking a Windows program opens it in Bottles, like on Windows.
+mkdir -p /etc/xdg
+for mime in application/x-ms-dos-executable application/x-msdownload application/x-msi application/x-ms-shortcut; do
+    if ! grep -qs "^${mime}=" /etc/xdg/mimeapps.list; then
+        grep -qs '^\[Default Applications\]' /etc/xdg/mimeapps.list || echo '[Default Applications]' >> /etc/xdg/mimeapps.list
+        sed -i "/^\[Default Applications\]/a ${mime}=com.usebottles.bottles.desktop" /etc/xdg/mimeapps.list
+    fi
+done
+
+mkdir -p "$STAMP_DIR"
 touch "$STAMP"
