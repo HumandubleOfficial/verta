@@ -26,6 +26,18 @@ ln -sfn ../Verta/scalable /usr/share/icons/Verta-Light/scalable
 gtk-update-icon-cache -f /usr/share/icons/Verta
 gtk-update-icon-cache -f /usr/share/icons/Verta-Light
 
+### Plasma style: Verta glass taskbar, popups and highlights ##################
+kset plasmarc Theme name verta
+test -f /usr/share/plasma/desktoptheme/verta/widgets/tasks.svg
+
+### Hover animations: smooth fades on buttons, menus and title-bar buttons ####
+kset breezerc Style AnimationsEnabled true
+kset breezerc Style AnimationsDuration 160
+kset breezerc Windeco AnimationsEnabled true
+kset breezerc Windeco AnimationsDuration 140
+# Hovering an app in the taskbar spotlights its windows (others fade back).
+kset kwinrc Plugins highlightwindowEnabled true
+
 ### Windows feel: familiar shortcuts and task switcher ########################
 SC() { kwriteconfig6 --file "$KDE_XDG/kglobalshortcutsrc" --group services --group "$1" --key "$2" "$3"; }
 SC org.kde.dolphin.desktop               _launch                     'Meta+E'
@@ -45,8 +57,14 @@ kset kdeglobals WM      activeFont           'Inter,10,-1,5,600,0,0,0,0,0,0,0,0,
 ### Animations: smooth but quick ############################################
 # 0.75 = every animation 25% shorter than stock Plasma.
 kset kdeglobals KDE AnimationDurationFactor 0.75
-kset kwinrc Plugins glideEnabled true          # windows glide in/out on open/close
-kset kwinrc Plugins scaleEnabled false         # (glide replaces the default scale)
+# Verta Motion (our own effect, /usr/share/kwin/effects/verta_motion) animates
+# windows, menus and tooltips; KDE's stock open/close effects are switched off.
+test -f /usr/share/kwin/effects/verta_motion/contents/code/main.js
+kset kwinrc Plugins verta_motionEnabled true
+kset kwinrc Plugins glideEnabled false
+kset kwinrc Plugins scaleEnabled false
+kset kwinrc Plugins fadeEnabled false
+kset kwinrc Plugins fadingpopupsEnabled false
 kset kwinrc Plugins squashEnabled true         # minimise squashes into the dock
 kset kwinrc Plugins magiclampEnabled false
 kset kwinrc Plugins wobblywindowsEnabled false
@@ -105,13 +123,14 @@ sed -i 's|/usr/share/wallpapers/Fedora/|/usr/share/wallpapers/Verta/|g' "$KDE_XD
 # Anything else still asking for the Fedora/Default wallpaper gets Verta's.
 ln -sfn Verta /usr/share/wallpapers/Default
 
+### Lock screen: Verta clock, glass password field, round unlock button ######
+python3 "$CTX/verta-lockscreen.py"
+
 ### Boot splash ##############################################################
-# watermark.png (V) and throbber-*.png (spinning ring) come from system_files;
-# borrow only the password box and keyboard/lock icons from the stock spinner.
-SPINNER=/usr/share/plymouth/themes/spinner
+# Verta's own animated script theme (verta.script + images from system_files);
+# only the small padlock icon is borrowed from the stock theme.
 THEME=/usr/share/plymouth/themes/verta
-for f in bullet capslock entry keyboard keymap-render lock; do
-    cp "$SPINNER/$f.png" "$THEME/"
-done
-ls "$THEME"/throbber-0036.png "$THEME"/watermark.png
+cp /usr/share/plymouth/themes/spinner/lock.png "$THEME/"
+ls "$THEME"/verta.script "$THEME"/logo-v.png "$THEME"/ring-71.png "$THEME"/glow.png >/dev/null
+test -f /usr/lib64/plymouth/script.so
 plymouth-set-default-theme verta

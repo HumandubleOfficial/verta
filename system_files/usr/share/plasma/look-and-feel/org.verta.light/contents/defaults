@@ -8,8 +8,8 @@ ColorScheme=VertaLight
 Theme=Verta-Light
 
 [plasmarc][Theme]
-# "default" is Breeze that follows the colour scheme.
-name=default
+# Verta glass Plasma style (taskbar, popups); follows the colour scheme.
+name=verta
 
 [Wallpaper]
 Image=Verta

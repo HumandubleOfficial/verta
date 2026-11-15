@@ -32,19 +32,24 @@ rm -f "$SPLASH"/*
 cp "$ART/logo-v.svg"    "$SPLASH/logo-v.svg"
 cp "$ART/logo-ring.svg" "$SPLASH/logo-ring.svg"
 
-### Boot splash (Plymouth two-step): V as the watermark, ring as a 36-frame
-### spinner drawn at the same spot, so the ring orbits the V while booting.
+### Boot animation (Plymouth script theme, verta.script): the V, the ring with
+### its moon as 72 frames 5 degrees apart, glow, password pill, progress line.
+### Rendered large (384 px) so they stay sharp on 4K; the script scales down.
 PLY="$SF/usr/share/plymouth/themes/verta"
 mkdir -p "$PLY"
 rm -f "$PLY"/*.png
-rsvg-convert -w 200 -h 200 "$ART/logo-v.svg" -o "$PLY/watermark.png"
+rsvg-convert -w 384 -h 384 "$ART/logo-v.svg" -o "$PLY/logo-v.png"
 TMP="$(mktemp -d)"
-for i in $(seq 1 36); do
-    angle=$(( (i - 1) * 10 ))
-    sed "s/rotate(0 256 256)/rotate(${angle} 256 256)/" "$ART/logo-ring.svg" > "$TMP/ring.svg"
-    rsvg-convert -w 200 -h 200 "$TMP/ring.svg" -o "$PLY/throbber-$(printf '%04d' "$i").png"
+for i in $(seq 0 71); do
+    sed "s/rotate(0 256 256)/rotate($(( i * 5 )) 256 256)/" "$ART/logo-ring.svg" > "$TMP/ring.svg"
+    rsvg-convert -w 384 -h 384 "$TMP/ring.svg" -o "$PLY/ring-$i.png"
 done
 rm -rf "$TMP"
+rsvg-convert -w 640 -h 640 "$ART/plymouth/glow.svg"   -o "$PLY/glow.png"
+rsvg-convert -w 600 -h 88  "$ART/plymouth/entry.svg"  -o "$PLY/entry.png"
+rsvg-convert -w 32  -h 32  "$ART/plymouth/bullet.svg" -o "$PLY/bullet.png"
+rsvg-convert -w 400 -h 8   "$ART/plymouth/track.svg"  -o "$PLY/track.png"
+rsvg-convert -w 400 -h 8   "$ART/plymouth/fill.svg"   -o "$PLY/fill.png"
 
 ### Verta icon theme (app tiles + folders, generated) #########################
 ### Verta-Light gets only an index.theme here; it shares Verta's icons through
@@ -57,6 +62,25 @@ cp -r "$TMP/Verta" "$TMP/Verta-Light" "$ICONS/"
 rsvg-convert -w 1120 "$TMP/preview.svg" -o "$ART/icons/preview.png"
 install_to "$ICONS/Verta/scalable/apps/org.verta.Settings.svg" "$ICONS/hicolor/scalable/apps/org.verta.Settings.svg"
 rm -rf "$TMP"
+
+### Verta Plasma style (taskbar, popups, tooltips, highlights) ###############
+rm -rf "$SF/usr/share/plasma/desktoptheme/verta"
+python3 -I "$ART/plasma/make-plasma-style.py" "$SF/usr/share/plasma/desktoptheme"
+
+### Verta logo in place of distro logos: icon names apps and KDE ask for
+### (start-here, distributor-logo, ...) and PNG sizes for the files Fedora's
+### logo package ships (swapped in at build time by 50-branding.sh).
+for n in start-here start-here-kde start-here-kde-plasma distributor-logo system-logo \
+         fedora-logo-icon start-here-fedora distributor-logo-fedora; do
+    install_to "$ART/logo.svg" "$ICONS/Verta/scalable/apps/$n.svg"
+    install_to "$ART/logo.svg" "$ICONS/Verta/scalable/places/$n.svg"
+done
+LOGO="$SF/usr/share/verta/logo"
+rm -rf "$LOGO"; mkdir -p "$LOGO"
+cp "$ART/logo.svg" "$LOGO/verta-logo.svg"
+for s in 16 22 24 32 36 48 64 96 128 256 512; do
+    rsvg-convert -w "$s" -h "$s" "$ART/logo.svg" -o "$LOGO/verta-logo-$s.png"
+done
 
 ### Installer (Anaconda) sidebar, top bar and header; used by brand-iso.sh ###
 PIX="$ROOT/installer/pixmaps"

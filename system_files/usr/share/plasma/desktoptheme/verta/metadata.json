@@ -1,0 +1,15 @@
+{
+    "KPlugin": {
+        "Authors": [
+            {
+                "Name": "Verta"
+            }
+        ],
+        "Description": "Verta glass: frosted taskbar and popups, Windows 11-style app indicators",
+        "Id": "verta",
+        "Name": "Verta",
+        "Version": "1.0",
+        "Website": "https://github.com/HumandubleOfficial/verta"
+    },
+    "X-Plasma-API": "5.0"
+}

@@ -1,26 +1,112 @@
 #!/usr/bin/bash
-# os-release branding, plus repo files bootc-image-builder needs.
+# Verta branding: Fedora is the engine underneath, but nothing a user sees
+# should say Fedora. Names, logos, links, themes, wallpapers, Firefox, Flatpak
+# sources and the firmware boot entry all become Verta.
 set -xeuo pipefail
 
-# Keep ID=fedora so Fedora tooling (and bootc-image-builder) still recognises the
-# system; only the user-facing names change.
-OS_RELEASE=/usr/lib/os-release
-sed -i \
-    -e "s|^NAME=.*|NAME=\"Verta\"|" \
-    -e "s|^PRETTY_NAME=.*|PRETTY_NAME=\"Verta\"|" \
-    -e "s|^VARIANT=.*|VARIANT=\"Gaming Desktop\"|" \
-    -e "s|^VARIANT_ID=.*|VARIANT_ID=${VERTA_FLAVOR}|" \
-    -e "s|^DEFAULT_HOSTNAME=.*|DEFAULT_HOSTNAME=\"verta\"|" \
-    -e "s|^LOGO=.*|LOGO=verta-logo|" \
-    "$OS_RELEASE"
-for kv in 'VARIANT="Gaming Desktop"' "VARIANT_ID=${VERTA_FLAVOR}" 'DEFAULT_HOSTNAME="verta"' 'LOGO=verta-logo'; do
-    grep -q "^${kv%%=*}=" "$OS_RELEASE" || echo "$kv" >> "$OS_RELEASE"
-done
-sed -i '/^IMAGE_ID=/d; /^IMAGE_VERSION=/d' "$OS_RELEASE"
-echo "IMAGE_ID=${VERTA_FLAVOR}"       >> "$OS_RELEASE"
-echo "IMAGE_VERSION=${VERTA_VERSION}" >> "$OS_RELEASE"
+VERTA_URL=https://github.com/HumandubleOfficial/verta
+LOGO=/usr/share/verta/logo          # rendered by scripts/render-art.sh
 
+### os-release ###############################################################
+# ID=fedora and VERSION_ID stay: they are how package tools, Distrobox and
+# bootc-image-builder recognise the base. Everything shown to people changes.
+OS_RELEASE=/usr/lib/os-release
+sed -i -E '/^(NAME|PRETTY_NAME|VERSION|VERSION_CODENAME|VARIANT|VARIANT_ID|DEFAULT_HOSTNAME|LOGO|ANSI_COLOR|CPE_NAME|HOME_URL|DOCUMENTATION_URL|SUPPORT_URL|BUG_REPORT_URL|SUPPORT_END|REDHAT_[A-Z_]+|IMAGE_ID|IMAGE_VERSION)=/d' "$OS_RELEASE"
+cat >> "$OS_RELEASE" <<EOF
+NAME="Verta"
+PRETTY_NAME="Verta"
+VERSION="${VERTA_VERSION}"
+VARIANT="Gaming Desktop"
+VARIANT_ID=${VERTA_FLAVOR}
+DEFAULT_HOSTNAME="verta"
+LOGO=verta-logo
+ANSI_COLOR="1;38;2;59;130;246"
+HOME_URL="${VERTA_URL}"
+DOCUMENTATION_URL="${VERTA_URL}#readme"
+SUPPORT_URL="${VERTA_URL}/issues"
+BUG_REPORT_URL="${VERTA_URL}/issues"
+IMAGE_ID=${VERTA_FLAVOR}
+IMAGE_VERSION=${VERTA_VERSION}
+EOF
+grep -q '^ID=fedora' "$OS_RELEASE"
+if grep -qiE 'fedoraproject|kinoite' "$OS_RELEASE"; then echo 'Fedora left in os-release' >&2; exit 1; fi
+
+# /etc/system-release is what some apps print as the OS name. fedora-release
+# and redhat-release stay for tools that check for a Fedora base.
+rm -f /etc/system-release
+echo "Verta release ${VERTA_VERSION}" > /usr/lib/system-release
+ln -s ../usr/lib/system-release /etc/system-release
+
+### About This System ########################################################
+cat > /etc/xdg/kcm-about-distrorc <<EOF
+[General]
+LogoPath=${LOGO}/verta-logo.svg
+Website=${VERTA_URL}
+EOF
+
+### Logos: every Fedora logo file becomes the Verta logo ######################
+# (the files stay so nothing that points at them breaks)
+size_of() {   # .../48x48/apps/x.png -> 48
+    local d; d="$(basename "$(dirname "$(dirname "$1")")")"
+    [[ $d =~ ^([0-9]+)x[0-9]+$ ]] && echo "${BASH_REMATCH[1]}" || echo 256
+}
+png_for() {
+    local s; s="$(size_of "$1")"
+    [ -f "$LOGO/verta-logo-$s.png" ] && echo "$LOGO/verta-logo-$s.png" || echo "$LOGO/verta-logo-256.png"
+}
+while IFS= read -r -d '' f; do
+    cp "$(png_for "$f")" "$f"
+done < <(find /usr/share/icons/hicolor /usr/share/icons/Bluecurve -type f \
+           \( -name 'fedora-logo*.png' -o -name 'start-here.png' -o -name 'kmenu.png' \
+              -o -name 'icon-panel-menu.png' -o -name 'gnome-main-menu.png' \) -print0)
+find /usr/share/icons/hicolor -type f -name 'fedora-logo*.svg' -exec cp "$LOGO/verta-logo.svg" {} \;
+for f in /usr/share/pixmaps/fedora*.png /usr/share/pixmaps/system-logo*.png; do
+    if [ -f "$f" ]; then cp "$LOGO/verta-logo-256.png" "$f"; fi
+done
+for f in /usr/share/pixmaps/fedora*.svg /usr/share/fedora-logos/*.svg; do
+    if [ -f "$f" ]; then cp "$LOGO/verta-logo.svg" "$f"; fi
+done
+if [ -f /etc/favicon.png ]; then cp "$LOGO/verta-logo-32.png" /etc/favicon.png; fi
 gtk-update-icon-cache -f /usr/share/icons/hicolor || true
+
+### Themes and wallpapers ####################################################
+# Fedora's global themes (Fedora / Fedora Dark / Fedora Light) and wallpapers
+# can't be uninstalled (Plasma requires the packages), so drop their files and
+# point anything that used them at Verta.
+rm -rf /usr/share/plasma/look-and-feel/org.fedoraproject.*
+rm -rf /usr/share/wallpapers/F[0-9][0-9] /usr/share/wallpapers/Fedora
+ln -sfn Verta /usr/share/wallpapers/Default
+grep -rlIZ -E 'wallpapers/(Fedora|F[0-9]{2})|org\.fedoraproject\.fedora(dark|light)?\.desktop' \
+    /etc /usr/lib/plasmalogin /usr/share/kde-settings /usr/share/plasma 2>/dev/null \
+  | xargs -0 -r sed -i -E \
+      -e 's#wallpapers/(Fedora|F[0-9]{2})/?#wallpapers/Verta/#g' \
+      -e 's#org\.fedoraproject\.fedoralight\.desktop#org.verta.light#g' \
+      -e 's#org\.fedoraproject\.fedora(dark)?\.desktop#org.verta.desktop#g' \
+  || true
+if grep -rlI -E 'wallpapers/(Fedora|F[0-9]{2})|org\.fedoraproject\.fedora' \
+        /etc /usr/lib/plasmalogin /usr/share/kde-settings /usr/share/plasma 2>/dev/null; then
+    echo 'Fedora theme/wallpaper references left (above)' >&2
+    exit 1
+fi
+
+### Firefox ##################################################################
+FF_PREFS=/usr/lib64/firefox/browser/defaults/preferences/firefox-redhat-default-prefs.js
+if [ -f "$FF_PREFS" ]; then
+    sed -i -E \
+        -e 's|^pref\("browser\.startup\.homepage",.*|pref("browser.startup.homepage", "about:home");|' \
+        -e 's|^pref\("browser\.newtabpage\.pinned",.*|pref("browser.newtabpage.pinned", "[]");|' \
+        "$FF_PREFS"
+    if grep -qi 'fedoraproject' "$FF_PREFS"; then echo 'Fedora left in Firefox prefs' >&2; exit 1; fi
+fi
+FF_DIST=/usr/lib64/firefox/distribution/distribution.ini
+if [ -f "$FF_DIST" ]; then sed -i 's/Fedora/Verta/g; s/=fedora$/=verta/' "$FF_DIST"; fi
+
+### Flatpak: Flathub only (no "Fedora Flatpaks" source in the App Store) ######
+systemctl disable flatpak-add-fedora-repos.service || true
+rm -f /etc/flatpak/remotes.d/fedora*.flatpakrepo /usr/share/flatpak/remotes.d/fedora*.flatpakrepo
+
+### Firmware boot menu: "Verta" instead of "Fedora" ##########################
+systemctl enable verta-boot-entry.service
 
 # Fedora 45 keeps its .repo files in /usr/share/dnf5/repos.d, but
 # bootc-image-builder only reads /etc/yum.repos.d from the image when building

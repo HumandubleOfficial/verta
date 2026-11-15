@@ -178,6 +178,8 @@ QQC2.ApplicationWindow {
                             spacing: 11
                             Tile {
                                 size: 26
+                                scale: navMouse.pressed ? 0.92 : navMouse.containsMouse ? 1.1 : 1
+                                Behavior on scale { NumberAnimation { duration: 160; easing.type: Easing.OutBack } }
                                 icon: navItem.modelData.icon
                                 fallback: navItem.modelData.fallback
                                 topColor: navItem.modelData.top

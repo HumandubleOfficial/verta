@@ -1,0 +1,42 @@
+#!/usr/bin/bash
+# Name this PC's firmware (UEFI) boot entry "Verta" instead of "Fedora".
+#
+# The installer registers the boot loader as "Fedora", which is what a PC's
+# boot menu (F12 / F8 / Esc at power-on) shows. Re-register the same loader
+# under the name Verta, then drop the old entry. Only touches entries on the
+# disk this system runs from, so another OS's entries are left alone. Does
+# nothing once there is no "Fedora" entry left.
+set -uo pipefail
+
+command -v efibootmgr >/dev/null || exit 0
+entries="$(efibootmgr -v 2>/dev/null)" || exit 0
+
+# Disks this system runs from (through any LUKS / LVM layers).
+root_src="$(findmnt -no SOURCE /sysroot 2>/dev/null || findmnt -no SOURCE /)"
+root_src="${root_src%%[*}"
+root_disks="$(lsblk -s -n -r -o NAME,TYPE "$root_src" 2>/dev/null | awk '$2 == "disk" {print $1}')"
+[ -n "$root_disks" ] || exit 0
+
+re_entry='^Boot([0-9A-Fa-f]{4})\*?[[:space:]]+Fedora[[:space:]]'
+re_part='HD\(([0-9]+),GPT,([0-9A-Fa-f-]+),'
+re_loader='(\\[Ee][Ff][Ii]\\[^)[:space:]]+\.[Ee][Ff][Ii])'
+
+while IFS= read -r line; do
+    [[ $line =~ $re_entry ]] || continue
+    num="${BASH_REMATCH[1]}"
+    [[ $line =~ $re_part ]] || continue
+    part="${BASH_REMATCH[1]}"
+    uuid="${BASH_REMATCH[2],,}"
+    [[ $line =~ $re_loader ]] || continue
+    loader="${BASH_REMATCH[1]}"
+
+    esp="$(readlink -f "/dev/disk/by-partuuid/$uuid")" || continue
+    [ -b "$esp" ] || continue
+    disk="$(lsblk -n -o PKNAME "$esp" | head -1)"
+    grep -qx "$disk" <<<"$root_disks" || continue
+
+    echo "Renaming boot entry $num (${loader}) to Verta"
+    efibootmgr -q -c -d "/dev/$disk" -p "$part" -L Verta -l "$loader" || continue
+    efibootmgr -q -b "$num" -B || true
+done <<<"$entries"
+exit 0

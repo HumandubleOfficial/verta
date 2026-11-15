@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <!-- Verta "Orbit" mark: a V inside an open orbit ring, with a moon in the gap.
+       logo-ring.svg and logo-v.svg are the same mark split in two (same canvas)
+       so the ring can spin around the V in the boot and login animations. -->
+  <defs>
+    <linearGradient id="ring" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#8bbcff"/>
+      <stop offset="1" stop-color="#1d4ed8"/>
+    </linearGradient>
+    <linearGradient id="v" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#d6e6ff"/>
+      <stop offset="1" stop-color="#3b82f6"/>
+    </linearGradient>
+  </defs>
+  <circle cx="256" cy="256" r="200" fill="none" stroke="url(#ring)" stroke-width="28"
+          stroke-linecap="round" stroke-dasharray="1000 256.6" transform="rotate(-8.25 256 256)"/>
+  <circle cx="397.4" cy="114.6" r="20" fill="#8bbcff"/>
+  <polygon points="152,152 208,152 256,272 304,152 360,152 256,384" fill="url(#v)"/>
+</svg>

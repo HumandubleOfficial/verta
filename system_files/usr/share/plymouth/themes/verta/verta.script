@@ -1,0 +1,215 @@
+# Verta boot animation (Plymouth "script" theme).
+#
+#   - the V eases in, growing slightly as it fades up
+#   - the orbit ring (with its moon) fades in and spins around it, speeding up
+#     as it appears
+#   - a soft blue glow "breathes" behind the logo
+#   - a thin line under the logo fills smoothly with boot progress
+#   - disk-unlock password prompt: a glass pill with dots for typed characters
+#
+# Images are rendered from art/ by scripts/render-art.sh. Everything is sized
+# from the screen height, so it looks the same on 1080p, 1440p and 4K.
+
+Window.SetBackgroundTopColor(0.027, 0.043, 0.106);
+Window.SetBackgroundBottomColor(0.008, 0.012, 0.035);
+
+sw = Window.GetWidth();
+sh = Window.GetHeight();
+ox = Window.GetX();
+oy = Window.GetY();
+s = sh / 1080;
+if (s < 0.55)
+    s = 0.55;
+
+cx = ox + sw / 2;
+cy = oy + sh * 0.45;
+LOGO = Math.Int(190 * s);
+FPS = 50;
+
+fun clamp01(x) {
+    if (x < 0)
+        return 0;
+    if (x > 1)
+        return 1;
+    return x;
+}
+
+# Ease-out cubic: fast start, gentle landing.
+fun ease(x) {
+    local.c = clamp01(x);
+    local.u = 1 - local.c;
+    return 1 - local.u * local.u * local.u;
+}
+
+### Glow ######################################################################
+glow_image = Image("glow.png").Scale(Math.Int(640 * s), Math.Int(640 * s));
+glow = Sprite(glow_image);
+glow.SetPosition(cx - glow_image.GetWidth() / 2, cy - glow_image.GetHeight() / 2, 1);
+glow.SetOpacity(0);
+
+### The V #####################################################################
+logo_source = Image("logo-v.png");
+logo = Sprite(logo_source.Scale(LOGO, LOGO));
+logo.SetPosition(cx - LOGO / 2, cy - LOGO / 2, 10);
+logo.SetOpacity(0);
+
+### Orbit ring + moon: 72 pre-rotated frames, 5 degrees apart ##################
+FRAMES = 72;
+for (i = 0; i < FRAMES; i++)
+    ring_frames[i] = Image("ring-" + i + ".png").Scale(LOGO, LOGO);
+ring = Sprite(ring_frames[0]);
+ring.SetPosition(cx - LOGO / 2, cy - LOGO / 2, 9);
+ring.SetOpacity(0);
+spin = 0;
+
+### Progress line #############################################################
+BAR_W = Math.Int(180 * s);
+BAR_H = Math.Int(4 * s);
+if (BAR_H < 2)
+    BAR_H = 2;
+bar_x = cx - BAR_W / 2;
+bar_y = cy + LOGO / 2 + Math.Int(80 * s);
+track = Sprite(Image("track.png").Scale(BAR_W, BAR_H));
+track.SetPosition(bar_x, bar_y, 5);
+track.SetOpacity(0);
+fill_source = Image("fill.png");
+fill = Sprite();
+fill.SetPosition(bar_x, bar_y, 6);
+fill.SetOpacity(0);
+progress_target = 0;
+progress_shown = 0;
+
+fun progress_callback(duration, progress) {
+    global.progress_target = progress;
+}
+Plymouth.SetBootProgressFunction(progress_callback);
+
+### Password prompt (encrypted disks) #########################################
+ENTRY_W = Math.Int(300 * s);
+ENTRY_H = Math.Int(44 * s);
+entry_x = cx - ENTRY_W / 2;
+entry_y = bar_y - Math.Int(12 * s);
+entry = Sprite(Image("entry.png").Scale(ENTRY_W, ENTRY_H));
+entry.SetPosition(entry_x, entry_y, 20);
+entry.SetOpacity(0);
+lock_image = Image("lock.png");
+LOCK = Math.Int(ENTRY_H * 0.5);
+lock = Sprite(lock_image.Scale(LOCK, LOCK));
+lock.SetPosition(entry_x + Math.Int(16 * s), entry_y + (ENTRY_H - LOCK) / 2, 21);
+lock.SetOpacity(0);
+DOT = Math.Int(9 * s);
+if (DOT < 6)
+    DOT = 6;
+dot_image = Image("bullet.png").Scale(DOT, DOT);
+DOT_STEP = DOT + Math.Int(6 * s);
+dots_x = entry_x + Math.Int(16 * s) + LOCK + Math.Int(12 * s);
+MAX_DOTS = Math.Int((entry_x + ENTRY_W - Math.Int(18 * s) - dots_x) / DOT_STEP);
+prompt = Sprite();
+prompt.SetOpacity(0);
+asking = 0;
+
+fun show_text(sprite, text, y) {
+    local.image = Image.Text(text, 0.85, 0.89, 0.96, 1, "Inter 12");
+    sprite.SetImage(local.image);
+    sprite.SetPosition(cx - local.image.GetWidth() / 2, y, 21);
+    sprite.SetOpacity(1);
+}
+
+fun hide_dots(from) {
+    for (local.i = from; local.i < MAX_DOTS; local.i++)
+        if (global.dots[local.i])
+            global.dots[local.i].SetOpacity(0);
+}
+
+fun password_callback(text, bullets) {
+    global.asking = 1;
+    entry.SetOpacity(1);
+    lock.SetOpacity(1);
+    show_text(prompt, text, entry_y - Math.Int(36 * s));
+    local.n = bullets;
+    if (local.n > MAX_DOTS)
+        local.n = MAX_DOTS;
+    for (local.i = 0; local.i < local.n; local.i++) {
+        if (!global.dots[local.i]) {
+            global.dots[local.i] = Sprite(dot_image);
+            global.dots[local.i].SetPosition(dots_x + local.i * DOT_STEP, entry_y + (ENTRY_H - DOT) / 2, 22);
+        }
+        global.dots[local.i].SetOpacity(1);
+    }
+    hide_dots(local.n);
+}
+Plymouth.SetDisplayPasswordFunction(password_callback);
+
+answer = Sprite();
+answer.SetOpacity(0);
+
+fun question_callback(text, typed) {
+    global.asking = 1;
+    entry.SetOpacity(1);
+    show_text(prompt, text, entry_y - Math.Int(36 * s));
+    local.image = Image.Text(typed, 0.95, 0.97, 1, 1, "Inter 12");
+    answer.SetImage(local.image);
+    answer.SetPosition(entry_x + Math.Int(18 * s), entry_y + (ENTRY_H - local.image.GetHeight()) / 2, 22);
+    answer.SetOpacity(1);
+}
+Plymouth.SetDisplayQuestionFunction(question_callback);
+
+fun normal_callback() {
+    global.asking = 0;
+    entry.SetOpacity(0);
+    lock.SetOpacity(0);
+    prompt.SetOpacity(0);
+    answer.SetOpacity(0);
+    hide_dots(0);
+}
+Plymouth.SetDisplayNormalFunction(normal_callback);
+
+### Messages (e.g. "Press Esc for details") ##################################
+message = Sprite();
+message.SetOpacity(0);
+
+fun message_callback(text) {
+    show_text(message, text, oy + sh - Math.Int(80 * s));
+    message.SetOpacity(0.7);
+}
+Plymouth.SetMessageFunction(message_callback);
+
+### Animation #################################################################
+frame = 0;
+
+fun refresh_callback() {
+    global.frame++;
+    local.t = frame / FPS;
+
+    # The V: fade up while growing from 82% to full size.
+    local.a = ease(local.t / 0.7);
+    logo.SetOpacity(local.a);
+    if (local.t < 0.8) {
+        local.size = Math.Int(LOGO * (0.82 + 0.18 * local.a));
+        logo.SetImage(logo_source.Scale(local.size, local.size));
+        logo.SetPosition(cx - local.size / 2, cy - local.size / 2, 10);
+    }
+
+    # Ring: fade in, then orbit (about one turn every 2.2 s at full speed).
+    local.r = ease((local.t - 0.25) / 0.6);
+    ring.SetOpacity(local.r);
+    global.spin = spin + 0.15 + 0.5 * local.r;
+    while (spin >= FRAMES)
+        global.spin = spin - FRAMES;
+    ring.SetImage(ring_frames[Math.Int(spin)]);
+
+    # Glow: fade in, then breathe.
+    glow.SetOpacity(ease((local.t - 0.2) / 0.8) * (0.6 + 0.25 * Math.Sin(local.t * 2.2)));
+
+    # Progress line: hidden while asking for a password.
+    local.p = ease((local.t - 0.6) / 0.6);
+    if (asking)
+        local.p = 0;
+    track.SetOpacity(local.p);
+    fill.SetOpacity(local.p);
+    global.progress_shown = progress_shown + (progress_target - progress_shown) * 0.06;
+    local.w = Math.Int(BAR_W * progress_shown);
+    if (local.w >= 2)
+        fill.SetImage(fill_source.Scale(local.w, BAR_H));
+}
+Plymouth.SetRefreshFunction(refresh_callback);

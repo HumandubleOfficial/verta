@@ -5,7 +5,7 @@
 
 var bar = new Panel;
 bar.location = "bottom";
-bar.height = 2 * Math.ceil(gridUnit * 2.7 / 2);
+bar.height = 2 * Math.ceil(gridUnit * 2.8 / 2);   // ~52 px: room for the app indicator dash
 bar.floating = true;
 bar.hiding = "none";
 bar.lengthMode = "fill";
@@ -30,7 +30,10 @@ tasks.writeConfig("launchers", [
     "applications:org.kde.discover.desktop",
     "applications:org.verta.Settings.desktop"
 ].join(","));
-tasks.writeConfig("iconSpacing", "2");
+tasks.writeConfig("iconSpacing", "1");           // tight, evenly spaced like Windows 11
+tasks.writeConfig("taskHoverEffect", "true");     // rounded hover pill (Verta Plasma style)
+tasks.writeConfig("highlightWindows", "true");    // hover an app: its windows are spotlighted
+tasks.writeConfig("showToolTips", "true");        // live window previews on hover
 tasks.writeConfig("indicateAudioStreams", "true");
 tasks.writeConfig("groupingStrategy", "1");      // group windows of one app
 tasks.writeConfig("middleClickAction", "NewInstance");

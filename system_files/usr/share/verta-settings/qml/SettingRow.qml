@@ -37,9 +37,9 @@ Item {
         anchors.fill: parent
         anchors.margins: 4
         radius: 10
-        color: win.hairline
+        color: mouse.pressed ? Qt.rgba(win.fg.r, win.fg.g, win.fg.b, 0.15) : win.hairline
         opacity: row.clickable && mouse.containsMouse ? 1 : 0
-        Behavior on opacity { NumberAnimation { duration: 120 } }
+        Behavior on opacity { NumberAnimation { duration: 140; easing.type: Easing.OutCubic } }
     }
 
     Rectangle {
@@ -116,7 +116,13 @@ Item {
             fallback: row.external ? "document-open" : "go-next"
             implicitWidth: 16
             implicitHeight: 16
-            opacity: 0.4
+            opacity: mouse.containsMouse ? 0.75 : 0.4
+            // The chevron nudges forward on hover.
+            transform: Translate {
+                x: mouse.containsMouse ? 3 : 0
+                Behavior on x { NumberAnimation { duration: 160; easing.type: Easing.OutCubic } }
+            }
+            Behavior on opacity { NumberAnimation { duration: 160 } }
         }
     }
 

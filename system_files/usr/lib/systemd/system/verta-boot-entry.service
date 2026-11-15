@@ -1,0 +1,12 @@
+[Unit]
+Description=Verta: name the firmware boot entry "Verta"
+Documentation=file:///usr/libexec/verta-boot-entry
+ConditionFirmware=uefi
+After=local-fs.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/libexec/verta-boot-entry
+
+[Install]
+WantedBy=multi-user.target

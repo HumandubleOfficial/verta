@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <!-- Soft blue light behind the logo; it "breathes" during boot. -->
+  <defs>
+    <radialGradient id="g" cx="256" cy="256" r="256" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#3b82f6" stop-opacity="0.55"/>
+      <stop offset="0.35" stop-color="#2563eb" stop-opacity="0.22"/>
+      <stop offset="0.7" stop-color="#1d4ed8" stop-opacity="0.06"/>
+      <stop offset="1" stop-color="#1d4ed8" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="512" height="512" fill="url(#g)"/>
+</svg>

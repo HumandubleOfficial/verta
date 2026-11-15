@@ -35,6 +35,8 @@ fuse-libs
 
 # Verta theme: icon set (dark variant, blue folders), UI font, rounded
 # window corners with outline glow (KDE-Rounded-Corners COPR)
+# Boot animation engine for Verta's animated boot screen
+plymouth-plugin-script
 papirus-icon-theme
 rsms-inter-fonts
 kwin-effect-roundcorners

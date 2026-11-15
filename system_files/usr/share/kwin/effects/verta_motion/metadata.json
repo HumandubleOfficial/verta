@@ -1,0 +1,19 @@
+{
+    "KPackageStructure": "KWin/Effect",
+    "KPlugin": {
+        "Authors": [
+            {
+                "Name": "Verta"
+            }
+        ],
+        "Category": "Window Open/Close Animation",
+        "Description": "Verta's window, menu and tooltip animations: windows rise into place, menus drop in, games are never animated",
+        "EnabledByDefault": false,
+        "Id": "verta_motion",
+        "License": "GPL",
+        "Name": "Verta Motion"
+    },
+    "X-KDE-Ordering": 60,
+    "X-KWin-Exclusive-Category": "toplevel-open-close-animation",
+    "X-Plasma-API": "javascript"
+}

@@ -18,8 +18,9 @@ already include media codecs and RPM Fusion.
 | **Glass** | Frosted blur behind panels, menus, popups and the terminal; rounded window corners with a thin blue outline and soft blue glow on the active window (KDE-Rounded-Corners); borderless frames |
 | **Animations** | Windows glide in/out, minimise squashes into the taskbar, everything 25% quicker than stock Plasma; animated login splash (V pops in, ring orbits) and boot splash (ring spins around the V) |
 | **Layout** | Windows 11-style floating taskbar: Start (Verta logo) and pinned apps centred, tray and clock on the right, show-desktop corner |
+| **Plasma style** | **Verta** (`art/plasma/make-plasma-style.py`): frosted-glass taskbar, Start menu, tray popups and tooltips with rounded corners, a hairline rim and soft shadow; rounded hover pills; a short dash under running apps and an accent-coloured dash under the active one, like Windows 11; hovering an app spotlights its windows |
 | **Wallpaper** | Space scene with the Orbit mark, on desktop, lock screen and login screen |
-| **Branding** | "Verta" and the Verta logo in About This System and the boot menu; Verta-branded installer |
+| **Branding** | Fedora is the engine underneath, Verta is everything you see: name, version, logo and links in About This System; Verta logo wherever a distro logo is used; no Fedora global themes or wallpapers; Firefox without the Fedora start page; Flathub as the only app source; the PC's firmware boot menu says "Verta" (`verta-boot-entry.service`); Verta-branded installer. Under the hood `ID=fedora` stays so Fedora's tools keep working |
 
 ![Verta icons](art/icons/preview.png)
 

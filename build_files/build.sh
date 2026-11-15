@@ -14,7 +14,7 @@ export AKMODS_NVIDIA=/akmods-nvidia # ghcr.io/ublue-os/akmods-nvidia-open:<kerne
 # System files first, with fresh permissions (644 files / 755 dirs): files
 # checked out on a Windows drive arrive as 0777, which must not end up in /usr.
 cp -rT --no-preserve=mode,ownership "$CTX/system_files" /
-chmod 0755 /usr/libexec/verta-flatpak-setup /usr/bin/verta-settings
+chmod 0755 /usr/libexec/verta-flatpak-setup /usr/libexec/verta-boot-entry /usr/bin/verta-settings
 
 for step in "$CTX"/[0-9][0-9]-*.sh; do
     echo "==== $(basename "$step")"
