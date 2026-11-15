@@ -69,25 +69,36 @@ class Backend(QObject):
         super().__init__()
         self._procs = {}
         self._flatpaks = None
+        self._booted = {"digest": "", "timestamp": 0}
+        self._staged_digest = ""
 
     # --- running things -----------------------------------------------------
 
     @Slot(str, list)
     def run(self, tag, argv):
         """Run a slow command in the background; emits finished(tag, ...)."""
+        self._spawn(tag, argv, lambda code, out: self.finished.emit(tag, code == 0, out))
+
+    def _spawn(self, tag, argv, on_done, merge=True):
+        """Run argv in the background; on_done(exit code, output) when done."""
         if tag in self._procs:
             return
         p = QProcess(self)
-        p.setProcessChannelMode(QProcess.MergedChannels)
+        if merge:
+            p.setProcessChannelMode(QProcess.MergedChannels)
         self._procs[tag] = p
+        state = {"done": False}
 
-        def done(code, _status):
-            out = bytes(p.readAll()).decode(errors="replace").strip()
+        def done(code, _status=None):
+            if state["done"]:
+                return
+            state["done"] = True
+            out = bytes(p.readAllStandardOutput()).decode(errors="replace").strip()
             self._procs.pop(tag, None)
             p.deleteLater()
-            self.finished.emit(tag, code == 0, out)
+            on_done(code, out)
         p.finished.connect(done)
-        p.errorOccurred.connect(lambda _e: p.state() == QProcess.NotRunning and done(127, None))
+        p.errorOccurred.connect(lambda _e: p.state() == QProcess.NotRunning and done(127))
         p.start(argv[0], argv[1:])
 
     @Slot(str, result=bool)
@@ -306,18 +317,68 @@ class Backend(QObject):
             staged=staged is not None,
             stagedVersion=(staged or {}).get("version", ""),
             rollback=any(not d.get("booted") and not d.get("staged") for d in deps),
-            source=ref.split(":", 1)[-1].removeprefix("docker://"),
+            source=self._registry_ref(ref),
             connected=UPDATE_REGISTRY in ref,
         )
+        # For the update check: exactly which image is running / downloaded.
+        self._booted = {"digest": booted.get("container-image-reference-digest", ""),
+                        "timestamp": booted.get("timestamp", 0)}
+        self._staged_digest = (staged or {}).get("container-image-reference-digest", "")
         return info
+
+    @staticmethod
+    def _registry_ref(ref):
+        """'ostree-unverified-registry:ghcr.io/x/verta:latest' -> 'ghcr.io/x/verta:latest'."""
+        if "docker://" in ref:
+            return ref.split("docker://", 1)[1]
+        return ref.split(":", 1)[1] if ref.startswith("ostree-") else ref
 
     def _image_name(self):
         return os_release().get("IMAGE_ID") or "verta"
 
     @Slot()
     def checkUpdates(self):
-        # Exit 0: an update is available; 77: already up to date.
-        self.run("check", ["sh", "-c", "rpm-ostree upgrade --check; echo \"exit=$?\""])
+        """Compare the image this PC runs with the newest one on the server.
+
+        `rpm-ostree upgrade --check` can't be trusted for container-based
+        systems (it often says "No updates available" when there is one), so
+        ask the registry directly for the newest image's digest (its exact
+        fingerprint) and compare. The images are public: no password needed.
+        Emits finished("check", ok, "available|<version>" / "ready" / "uptodate").
+        """
+        info = self.updateInfo()
+        if not info["ok"] or not info["connected"]:
+            self.finished.emit("check", False, "This PC isn't connected to Verta updates yet.")
+            return
+        fmt = '{{.Digest}}|{{index .Labels "org.opencontainers.image.version"}}|{{.Created}}'
+        self._spawn("check", ["skopeo", "inspect", "--no-creds", "--retry-times", "2",
+                              "--format", fmt, f"docker://{info['source']}"],
+                    self._check_done, merge=False)
+
+    def _check_done(self, code, out):
+        parts = out.strip().split("|")
+        if code != 0 or len(parts) < 2 or not parts[0].startswith("sha256:"):
+            self.finished.emit("check", False,
+                               "Couldn't reach the update server. Check your internet connection.")
+            return
+        digest, version = parts[0], parts[1]
+        if digest == self._staged_digest:
+            self.finished.emit("check", True, "ready")
+        elif self._booted["digest"]:
+            same = digest == self._booted["digest"]
+            self.finished.emit("check", True, "uptodate" if same else f"available|{version}")
+        else:
+            # No digest recorded for the running image: fall back to dates.
+            created = parts[2] if len(parts) > 2 else ""
+            newer = False
+            try:
+                from datetime import datetime, timezone
+                stamp = datetime.fromisoformat(created.split(" +")[0].split(".")[0].replace(" ", "T"))
+                stamp = stamp.replace(tzinfo=timezone.utc)
+                newer = stamp.timestamp() > float(self._booted["timestamp"]) + 120
+            except (ValueError, TypeError):
+                newer = True
+            self.finished.emit("check", True, f"available|{version}" if newer else "uptodate")
 
     @Slot()
     def installUpdates(self):

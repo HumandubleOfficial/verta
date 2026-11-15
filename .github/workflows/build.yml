@@ -60,7 +60,11 @@ jobs:
         env:
           FLAVOR: ${{ matrix.flavor }}
         run: |
-          VERTA_VERSION="$(date -u +%Y.%m.%d)"
+          # Every build gets its own version (date + run number), so Settings ->
+          # Updates and About can tell two builds from the same day apart.
+          BUILD_DATE="$(date -u +%Y.%m.%d)"
+          VERTA_VERSION="${BUILD_DATE}.${{ github.run_number }}"
+          echo "BUILD_DATE=$BUILD_DATE" >> "$GITHUB_ENV"
           echo "VERTA_VERSION=$VERTA_VERSION" >> "$GITHUB_ENV"
           sudo env VERTA_VERSION="$VERTA_VERSION" \
                    IMAGE_SOURCE="${{ github.server_url }}/${{ github.repository }}" \
@@ -73,11 +77,10 @@ jobs:
           REGISTRY_USER: ${{ github.actor }}
           REGISTRY_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OWNER: ${{ github.repository_owner }}
-          RUN_NUMBER: ${{ github.run_number }}
         run: |
           IMAGE="ghcr.io/${OWNER,,}/${FLAVOR}"
           echo "$REGISTRY_TOKEN" | sudo podman login ghcr.io -u "$REGISTRY_USER" --password-stdin
-          for tag in latest "$VERTA_VERSION" "${VERTA_VERSION}.${RUN_NUMBER}"; do
+          for tag in latest "$BUILD_DATE" "$VERTA_VERSION"; do
             sudo podman tag "localhost/${FLAVOR}:latest" "${IMAGE}:${tag}"
             # (the runner's podman has no --retry flag)
             for try in 1 2 3; do

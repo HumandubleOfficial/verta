@@ -12,6 +12,7 @@ SettingsPage {
     // idle | checking | uptodate | available | installing | ready | connecting | error
     property string phase: info.staged ? "ready" : "idle"
     property string message: ""
+    property string newVersion: ""
 
     function lastLine(text) {
         const lines = text.trim().split("\n").filter(l => l.trim() !== "")
@@ -27,7 +28,7 @@ SettingsPage {
         if (phase === "installing") return "Downloading and installing…"
         if (phase === "connecting") return "Connecting to Verta updates…"
         if (!info.connected) return "Connect to Verta updates"
-        if (phase === "available") return "An update is available"
+        if (phase === "available") return newVersion ? "Verta " + newVersion + " is available" : "An update is available"
         if (phase === "uptodate") return "Verta is up to date"
         if (phase === "error") return "Something went wrong"
         return "Verta " + info.version
@@ -167,11 +168,14 @@ SettingsPage {
         target: win.backend
         function onFinished(tag, ok, output) {
             if (tag === "check") {
-                const m = output.match(/exit=(\d+)/)
-                const code = m ? parseInt(m[1]) : 1
-                if (code === 0 && /AvailableUpdate/.test(output)) page.phase = "available"
-                else if (code === 0 || code === 77) page.phase = "uptodate"
-                else { page.phase = "error"; page.message = page.lastLine(output.replace(/exit=\d+/, "")) }
+                // "available|<version>", "ready" (already downloaded) or "uptodate"
+                if (!ok) { page.phase = "error"; page.message = output }
+                else if (output.startsWith("available")) {
+                    page.newVersion = output.split("|")[1] || ""
+                    page.phase = "available"
+                }
+                else if (output === "ready") page.phase = "ready"
+                else page.phase = "uptodate"
             } else if (tag === "install" || tag === "rollback" || tag === "connect") {
                 page.info = win.backend.updateInfo()
                 if (ok) page.phase = "ready"
