@@ -79,6 +79,11 @@ jobs:
           echo "$REGISTRY_TOKEN" | sudo podman login ghcr.io -u "$REGISTRY_USER" --password-stdin
           for tag in latest "$VERTA_VERSION" "${VERTA_VERSION}.${RUN_NUMBER}"; do
             sudo podman tag "localhost/${FLAVOR}:latest" "${IMAGE}:${tag}"
-            sudo podman push --retry 3 "${IMAGE}:${tag}"
+            # (the runner's podman has no --retry flag)
+            for try in 1 2 3; do
+              sudo podman push "${IMAGE}:${tag}" && break
+              [ "$try" = 3 ] && exit 1
+              sleep 15
+            done
           done
           echo "Published ${IMAGE}:latest" >> "$GITHUB_STEP_SUMMARY"
