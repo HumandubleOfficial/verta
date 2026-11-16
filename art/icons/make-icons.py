@@ -2,9 +2,10 @@
 """Generate the Verta icon theme (Apple-style app tiles and folders).
 
 Every icon is drawn on a 512x512 canvas from a few shared building blocks so
-the whole set stays consistent: a rounded-square ("squircle") tile with a
-two-tone gradient, a soft stacked shadow, a glossy top highlight and a thin
-inner rim; folders share one Mac-style folder body with an embossed symbol.
+the whole set stays simple and consistent: a rounded-square tile with a gentle
+gradient, one soft shadow and a hairline rim, and a flat white symbol (no
+gloss, no glyph shadows); folders share one Mac-style folder body with a flat
+symbol. Every app gets its own shape and colour, so no two icons look alike.
 
 Only SVG features Qt's renderer handles well are used (no filters, masks or
 clip paths), so icons look the same in Plasma as in a browser.
@@ -26,34 +27,28 @@ WHITE = "#ffffff"
 # --- shared building blocks -------------------------------------------------
 
 def tile(uid, top, bottom):
-    """Rounded-square app tile: shadow, gradient body, gloss and rim."""
-    x, y, s, r = 48, 40, 416, 96
+    """Rounded-square app tile: one soft shadow, a gentle gradient, a hairline rim."""
+    x, y, s, r = 48, 40, 416, 100
     shadow = "".join(
-        f'<rect x="{x - g}" y="{y + 6 + g * 2}" width="{s + 2 * g}" height="{s}" rx="{r + g}" '
+        f'<rect x="{x - g}" y="{y + 8 + g}" width="{s + 2 * g}" height="{s}" rx="{r + g}" '
         f'fill="#000" opacity="{o}"/>'
-        for g, o in ((2, 0.10), (6, 0.07), (10, 0.045), (16, 0.025))
+        for g, o in ((0, 0.10), (8, 0.05))
     )
     return (
         f'<defs>'
         f'<linearGradient id="{uid}-bg" x1="0" y1="0" x2="0" y2="1">'
         f'<stop offset="0" stop-color="{top}"/><stop offset="1" stop-color="{bottom}"/></linearGradient>'
-        f'<linearGradient id="{uid}-gloss" x1="0" y1="0" x2="0" y2="1">'
-        f'<stop offset="0" stop-color="#fff" stop-opacity="0.28"/>'
-        f'<stop offset="0.45" stop-color="#fff" stop-opacity="0.06"/>'
-        f'<stop offset="0.55" stop-color="#fff" stop-opacity="0"/></linearGradient>'
         f'</defs>'
         f'{shadow}'
         f'<rect x="{x}" y="{y}" width="{s}" height="{s}" rx="{r}" fill="url(#{uid}-bg)"/>'
-        f'<rect x="{x}" y="{y}" width="{s}" height="{s}" rx="{r}" fill="url(#{uid}-gloss)"/>'
-        f'<rect x="{x + 1.5}" y="{y + 1.5}" width="{s - 3}" height="{s - 3}" rx="{r - 1.5}" '
-        f'fill="none" stroke="#fff" stroke-opacity="0.16" stroke-width="3"/>'
+        f'<rect x="{x + 1}" y="{y + 1}" width="{s - 2}" height="{s - 2}" rx="{r - 1}" '
+        f'fill="none" stroke="#fff" stroke-opacity="0.10" stroke-width="2"/>'
     )
 
 
-def lifted(body, dy=7, opacity=0.18):
-    """A glyph with a soft drop shadow underneath it."""
-    return (f'<g transform="translate(0 {dy})" opacity="{opacity}" fill="#000" stroke="#000">{body}</g>'
-            f'{body}')
+def lifted(body):
+    """Glyphs are drawn flat (kept as a hook so every app draws the same way)."""
+    return body
 
 
 def gear_points(cx, cy, r_out, r_in, teeth, tooth_frac=0.5, rot=0.0):
@@ -94,15 +89,19 @@ def app_terminal(u):
     return tile(u, "#334155", "#0b1220") + g
 
 
-def app_settings(u, top="#a3acbb", bottom="#566072"):
-    g = gear(256, 248, 128, 104, 44).replace("BG_HOLE", bottom)
-    return tile(u, top, bottom) + lifted(g)
+def app_settings(u):
+    """KDE's full System Settings: three sliders on grey."""
+    g = ''.join(
+        f'<rect x="150" y="{y - 9}" width="212" height="18" rx="9" fill="#fff" opacity="0.55"/>'
+        f'<rect x="150" y="{y - 9}" width="{k - 150}" height="18" rx="9" fill="#fff"/>'
+        f'<circle cx="{k}" cy="{y}" r="30" fill="#fff"/>'
+        for y, k in ((176, 300), (256, 196), (336, 268)))
+    return tile(u, "#9aa4b4", "#5b6577") + g
 
 
 def app_verta_settings(u):
     g = gear(256, 248, 124, 100, 46).replace("BG_HOLE", "#1e40af")
-    moon = '<circle cx="356" cy="140" r="20" fill="#bcd6ff"/>'
-    return tile(u, "#4f8dff", "#1e3a8a") + lifted(g) + moon
+    return tile(u, "#4f8dff", "#1e3a8a") + g
 
 
 def app_store(u):
@@ -140,18 +139,18 @@ def app_screenshot(u):
 
 
 def app_monitor(u):
-    grid = ''.join(f'<rect x="120" y="{y}" width="272" height="3" fill="#22c55e" opacity="0.18"/>'
+    grid = ''.join(f'<rect x="120" y="{y}" width="272" height="4" rx="2" fill="#16a34a" opacity="0.12"/>'
                    for y in (176, 236, 296, 356))
-    pulse = ('<path d="M112 272 H186 L214 200 L254 330 L286 236 L306 272 H400" fill="none" stroke="#4ade80" '
-             'stroke-width="22" stroke-linecap="round" stroke-linejoin="round"/>')
-    return tile(u, "#3b4657", "#0b1220") + grid + pulse
+    pulse = ('<path d="M112 272 H186 L214 200 L254 330 L286 236 L306 272 H400" fill="none" stroke="#16a34a" '
+             'stroke-width="24" stroke-linecap="round" stroke-linejoin="round"/>')
+    return tile(u, "#ffffff", "#e3e8f0") + grid + pulse
 
 
 def app_info(u):
     g = ('<circle cx="256" cy="256" r="124" fill="none" stroke="#fff" stroke-width="26"/>'
          '<circle cx="256" cy="188" r="20" fill="#fff"/>'
          '<rect x="238" y="226" width="36" height="110" rx="18" fill="#fff"/>')
-    return tile(u, "#60a5fa", "#1d4ed8") + lifted(g)
+    return tile(u, "#67e8f9", "#0e7490") + lifted(g)
 
 
 def app_disk_usage(u):
@@ -193,7 +192,7 @@ def app_update(u):
          'stroke-linecap="round"/>'
          '<path d="M318 168 L366 222 L304 240 Z" fill="#fff" stroke="#fff" stroke-width="14" '
          'stroke-linejoin="round"/>')
-    return tile(u, "#4ade80", "#15803d") + lifted(g)
+    return tile(u, "#a5b4fc", "#4338ca") + lifted(g)
 
 
 def app_android(u):
@@ -210,25 +209,20 @@ def folder(u, emblem=""):
     back = ('<path d="M60 150 Q60 112 98 112 H196 Q214 112 228 124 L254 146 H414 Q452 146 452 184 V380 '
             'Q452 418 414 418 H98 Q60 418 60 380 Z" fill="url(#' + u + '-back)"/>')
     shadow = ''.join(f'<rect x="{56 - g}" y="{196 + 4 + g}" width="{400 + 2 * g}" height="242" rx="{34 + g}" '
-                     f'fill="#000" opacity="{o}"/>' for g, o in ((2, 0.10), (7, 0.06), (13, 0.03)))
+                     f'fill="#000" opacity="{o}"/>' for g, o in ((1, 0.10), (7, 0.04)))
     front = (f'<rect x="56" y="190" width="400" height="242" rx="34" fill="url(#{u}-front)"/>'
-             f'<rect x="56" y="190" width="400" height="242" rx="34" fill="url(#{u}-gloss)"/>'
-             f'<rect x="57.5" y="191.5" width="397" height="239" rx="32.5" fill="none" stroke="#fff" '
-             f'stroke-opacity="0.35" stroke-width="3"/>')
+             f'<rect x="57" y="191" width="398" height="240" rx="33" fill="none" stroke="#fff" '
+             f'stroke-opacity="0.30" stroke-width="2"/>')
     defs = (f'<defs>'
             f'<linearGradient id="{u}-back" x1="0" y1="0" x2="0" y2="1">'
             f'<stop offset="0" stop-color="#4b8df8"/><stop offset="1" stop-color="#1e4fc7"/></linearGradient>'
             f'<linearGradient id="{u}-front" x1="0" y1="0" x2="0" y2="1">'
             f'<stop offset="0" stop-color="#8cc2ff"/><stop offset="1" stop-color="#3b82f6"/></linearGradient>'
-            f'<linearGradient id="{u}-gloss" x1="0" y1="0" x2="0" y2="1">'
-            f'<stop offset="0" stop-color="#fff" stop-opacity="0.25"/>'
-            f'<stop offset="0.4" stop-color="#fff" stop-opacity="0"/></linearGradient>'
             f'</defs>')
-    # Embossed symbol: darker blue with a light edge underneath.
+    # Symbol: one flat tone of the folder's own blue.
     emb = ''
     if emblem:
-        emb = (f'<g transform="translate(0 3)" opacity="0.5" fill="#dbeafe" stroke="#dbeafe">{emblem}</g>'
-               f'<g opacity="0.85" fill="#1e4fc7" stroke="#1e4fc7">{emblem}</g>')
+        emb = f'<g opacity="0.75" fill="#1d4ed8" stroke="#1d4ed8">{emblem}</g>'
     return defs + back + shadow + front + emb
 
 

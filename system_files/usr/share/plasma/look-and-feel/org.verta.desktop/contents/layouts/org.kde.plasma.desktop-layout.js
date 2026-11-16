@@ -13,12 +13,11 @@ bar.lengthMode = "fill";
 // Two expanding spacers either side of the start button + apps centre them.
 bar.addWidget("org.kde.plasma.panelspacer");
 
-var start = bar.addWidget("org.kde.plasma.kickoff");
+// Verta Start (/usr/share/plasma/plasmoids/org.verta.start): pinned apps,
+// recent files, all apps and search. Opens with the Windows/Meta key too.
+var start = bar.addWidget("org.verta.start");
 start.currentConfigGroup = ["General"];
 start.writeConfig("icon", "verta-logo");
-start.writeConfig("favoritesDisplay", "0");      // pinned apps as a grid
-start.writeConfig("applicationsDisplay", "1");   // all apps as a list
-start.writeConfig("compactMode", "false");
 
 var tasks = bar.addWidget("org.kde.plasma.icontasks");
 tasks.currentConfigGroup = ["General"];

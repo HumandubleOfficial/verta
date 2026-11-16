@@ -67,6 +67,17 @@ rm -rf "$TMP"
 rm -rf "$SF/usr/share/plasma/desktoptheme/verta"
 python3 -I "$ART/plasma/make-plasma-style.py" "$SF/usr/share/plasma/desktoptheme"
 
+### Verta window title bars with round buttons (Aurorae themes) #############
+rm -rf "$SF/usr/share/aurorae/themes/Verta" "$SF/usr/share/aurorae/themes/Verta-Light"
+python3 -I "$ART/aurorae/make-aurorae.py" "$SF/usr/share/aurorae/themes"
+PREV="$(mktemp -d)"
+for t in Verta Verta-Light; do
+    for b in minimize maximize restore close; do
+        rsvg-convert -z 4 "$SF/usr/share/aurorae/themes/$t/$b.svg" -o "$PREV/$t-$b.png"
+    done
+done
+mkdir -p "$ART/aurorae/preview" && cp "$PREV"/*.png "$ART/aurorae/preview/" && rm -rf "$PREV"
+
 ### Verta logo in place of distro logos: icon names apps and KDE ask for
 ### (start-here, distributor-logo, ...) and PNG sizes for the files Fedora's
 ### logo package ships (swapped in at build time by 50-branding.sh).

@@ -43,5 +43,11 @@ systemctl disable NetworkManager-wait-online.service
 systemctl disable ModemManager.service
 # dnf metadata refresh is useless on an image-based system.
 systemctl disable dnf-makecache.timer
+# Fedora's anonymous user-count ping and the man-page index rebuild at boot.
+for unit in rpm-ostree-countme.timer fedora-atomic-desktop-mandb-update.service; do
+    if [ -e "/usr/lib/systemd/system/$unit" ]; then
+        systemctl disable "$unit"
+    fi
+done
 
 systemctl enable verta-flatpak-setup.service

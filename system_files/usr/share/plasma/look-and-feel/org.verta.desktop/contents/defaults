@@ -1,5 +1,5 @@
 [kdeglobals][KDE]
-widgetStyle=Breeze
+widgetStyle=Darkly
 
 [kdeglobals][General]
 ColorScheme=VertaDark
@@ -18,8 +18,8 @@ Image=Verta
 cursorTheme=breeze_cursors
 
 [kwinrc][org.kde.kdecoration2]
-library=org.kde.breeze
-theme=Breeze
+library=org.kde.kwin.aurorae
+theme=__aurorae__svg__Verta
 
 [ksplashrc][KSplash]
 Theme=org.verta.desktop

@@ -1,0 +1,14 @@
+{
+    "KPlugin": {
+        "Authors": [
+            {
+                "Name": "Verta"
+            }
+        ],
+        "Description": "Verta's light window title bar with round buttons",
+        "Id": "Verta-Light",
+        "License": "GPL-2.0-or-later",
+        "Name": "Verta Light",
+        "Version": "1.0"
+    }
+}

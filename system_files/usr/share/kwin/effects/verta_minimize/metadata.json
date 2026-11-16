@@ -1,0 +1,19 @@
+{
+    "KPackageStructure": "KWin/Effect",
+    "KPlugin": {
+        "Authors": [
+            {
+                "Name": "Verta"
+            }
+        ],
+        "Category": "Appearance",
+        "Description": "Verta's minimise animation: windows glide down into their taskbar icon and spring back out of it",
+        "EnabledByDefault": false,
+        "Id": "verta_minimize",
+        "License": "GPL",
+        "Name": "Verta Minimise"
+    },
+    "X-KDE-Ordering": 60,
+    "X-KWin-Exclusive-Category": "minimize",
+    "X-Plasma-API": "javascript"
+}

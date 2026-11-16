@@ -33,13 +33,14 @@ btop
 waydroid
 fuse-libs
 
-# Verta theme: icon set (dark variant, blue folders), UI font, rounded
-# window corners with outline glow (KDE-Rounded-Corners COPR)
-# Boot animation engine for Verta's animated boot screen
-plymouth-plugin-script
+# Verta theme: fallback icon set, UI font, rounded window corners with
+# outline glow (KDE-Rounded-Corners COPR), the Darkly widget style for rounded
+# frosted menus and controls (Darkly COPR), and the boot animation engine
 papirus-icon-theme
 rsms-inter-fonts
 kwin-effect-roundcorners
+darkly
+plymouth-plugin-script
 
 # Performance (CachyOS add-ons COPR): sched-ext CPU schedulers + loader, and
 # ananicy-cpp with CachyOS' process priority rules

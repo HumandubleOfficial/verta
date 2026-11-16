@@ -14,7 +14,8 @@ fi
 # COPR repos, enabled only for this build and switched off again afterwards:
 #   bieszczaders/kernel-cachyos-addons  sched-ext CPU schedulers (scx), ananicy-cpp
 #   matinlotfali/KDE-Rounded-Corners    rounded window corners (upstream author's repo)
-COPRS=(bieszczaders/kernel-cachyos-addons matinlotfali/KDE-Rounded-Corners)
+#   deltacopy/darkly                    Darkly widget style: rounded, frosted menus
+COPRS=(bieszczaders/kernel-cachyos-addons matinlotfali/KDE-Rounded-Corners deltacopy/darkly)
 COPR_FILES=()
 for copr in "${COPRS[@]}"; do
     owner="${copr%%/*}"; project="${copr#*/}"
