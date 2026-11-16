@@ -21,6 +21,8 @@ QQC2.ApplicationWindow {
 
     // Shared look, used by every page and component.
     readonly property bool dark: Kirigami.ColorUtils.brightnessForColor(Kirigami.Theme.backgroundColor) === Kirigami.ColorUtils.Dark
+    // The installed Verta version, e.g. "2026.11.16.8" (shown under the title).
+    readonly property string osVersion: backend.version()
     readonly property color fg: Kirigami.Theme.textColor
     readonly property color accent: Kirigami.Theme.highlightColor
     readonly property color cardColor: dark ? Qt.rgba(1, 1, 1, 0.045) : "#ffffff"
@@ -120,7 +122,7 @@ QQC2.ApplicationWindow {
                             font.weight: Font.Bold
                         }
                         QQC2.Label {
-                            text: "Settings"
+                            text: win.osVersion ? "Settings · " + win.osVersion : "Settings"
                             opacity: 0.55
                         }
                     }

@@ -526,6 +526,11 @@ class Backend(QObject):
 
     # --- about --------------------------------------------------------------
 
+    @Slot(result=str)
+    def version(self):
+        rel = os_release()
+        return rel.get("IMAGE_VERSION") or rel.get("VERSION_ID", "")
+
     @Slot(result="QVariantMap")
     def about(self):
         rel = os_release()
