@@ -33,7 +33,7 @@ SettingsPage {
         title: "Get apps"
         SettingRow {
             title: "App Store"
-            subtitle: "Thousands of apps and games from Flathub and Fedora (Discover)."
+            subtitle: "Thousands of apps and games, ready to install."
             icon: "org.kde.discover"
             clickable: true
             external: true

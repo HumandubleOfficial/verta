@@ -14,3 +14,9 @@ khelpcenter         # offline KDE handbook
 kwrite              # duplicate of Kate
 htop                # btop is installed instead
 firewall-config     # firewalld GUI (the firewall stays on)
+fedora-bookmarks    # Firefox's default bookmarks (Fedora's sites)
+fedora-chromium-config fedora-chromium-config-kde   # Fedora's Chromium policies
+fedora-workstation-backgrounds  # Fedora wallpapers (their files were already hidden)
+plasma-workspace-wallpapers     # ~40 stock KDE wallpapers; Verta ships its own
+toolbox             # makes "fedora-toolbox" containers; Distrobox/BoxBuddy do this
+NetworkManager-config-connectivity-fedora   # online check against Fedora's site (Verta's own is in system_files)

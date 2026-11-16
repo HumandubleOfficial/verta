@@ -113,6 +113,18 @@ def app_store(u):
     return tile(u, "#38bdf8", "#2563eb") + lifted(bag)
 
 
+def app_launchpad(u):
+    """Apps (Verta Start in the dock): a 3x3 grid of rounded squares, each a
+    different colour, on a light tile (it stands out on dark and light docks)."""
+    colors = ["#f87171", "#fbbf24", "#34d399",
+              "#38bdf8", "#818cf8", "#f472b6",
+              "#a3e635", "#fb923c", "#60a5fa"]
+    cells = "".join(
+        f'<rect x="{150 + c * 76}" y="{142 + r * 76}' + f'" width="60" height="60" rx="16" fill="{colors[r * 3 + c]}"/>'
+        for r in range(3) for c in range(3))
+    return tile(u, "#f8fafc", "#cbd5e1") + cells
+
+
 def app_editor(u):
     paper = ''.join(f'<rect x="148" y="{y}" width="{w}" height="16" rx="8" fill="#b6bfcd"/>'
                     for y, w in ((222, 216), (262, 216), (302, 216), (342, 150)))
@@ -264,7 +276,9 @@ def trash(u, full=False):
             f'<linearGradient id="{u}-lid" x1="0" y1="0" x2="0" y2="1">'
             f'<stop offset="0" stop-color="#e5e9f0"/><stop offset="1" stop-color="#a3adbd"/></linearGradient></defs>')
     shadow = '<ellipse cx="256" cy="440" rx="120" ry="14" fill="#000" opacity="0.12"/>'
-    return defs + shadow + paper + body
+    # Drawn a size up so it matches the app tiles next to it in the dock.
+    return (defs + '<g transform="translate(256 262) scale(1.26) translate(-256 -266)">'
+            + shadow + paper + body + '</g>')
 
 
 # --- which icon names get which drawing --------------------------------------
@@ -275,6 +289,7 @@ APPS = {
     app_settings:       ["systemsettings", "preferences-system", "org.kde.systemsettings"],
     app_verta_settings: ["org.verta.Settings"],
     app_store:          ["org.kde.discover", "plasmadiscover", "system-software-install"],
+    app_launchpad:      ["verta-launchpad"],
     app_editor:         ["org.kde.kate", "kate", "accessories-text-editor", "org.kde.kwrite"],
     app_archive:        ["org.kde.ark", "ark", "utilities-file-archiver"],
     app_screenshot:     ["org.kde.spectacle", "spectacle", "accessories-screenshot"],

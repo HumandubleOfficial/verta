@@ -13,6 +13,10 @@
       <label>Apps pinned the first time Start opens (if the system list is missing)</label>
       <default>preferred://browser,org.kde.dolphin.desktop,steam.desktop,org.kde.discover.desktop,org.verta.Settings.desktop,org.kde.konsole.desktop</default>
     </entry>
+    <entry name="launchpad" type="Bool">
+      <label>Open a full-screen grid of all apps (dock) instead of the Start menu (taskbar)</label>
+      <default>false</default>
+    </entry>
     <entry name="favoritesPorted" type="Bool">
       <label>Whether the first-run pins were added</label>
       <default>false</default>

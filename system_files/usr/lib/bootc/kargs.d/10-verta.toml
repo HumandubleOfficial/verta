@@ -1,2 +1,9 @@
-# Verta kernel arguments: graphical boot splash and a quiet console.
-kargs = ["rhgb", "quiet", "splash", "loglevel=3", "rd.udev.log_level=3", "systemd.show_status=auto", "vt.global_cursor_default=0"]
+# Verta kernel arguments.
+#
+# Boot: graphical splash and a quiet console.
+# Speed:
+#   preempt=full      a running kernel task can be interrupted at almost any
+#                     point, so game, audio and input threads wait less
+#   nowatchdog        no soft/hard lockup watchdog timers firing on every core
+#   nmi_watchdog=0    and no NMI watchdog (it also holds a CPU perf counter)
+kargs = ["rhgb", "quiet", "splash", "loglevel=3", "rd.udev.log_level=3", "systemd.show_status=auto", "vt.global_cursor_default=0", "preempt=full", "nowatchdog", "nmi_watchdog=0"]

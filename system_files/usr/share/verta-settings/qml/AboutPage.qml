@@ -70,7 +70,6 @@ SettingsPage {
         InfoRow { title: "Storage"; value: page.a.disk }
         InfoRow { title: "Kernel"; value: page.a.kernel }
         InfoRow { title: "Secure Boot"; value: page.a.secureBoot }
-        InfoRow { title: "Based on"; value: page.a.base }
     }
 
     Section {

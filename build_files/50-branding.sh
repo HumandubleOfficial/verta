@@ -133,6 +133,28 @@ if [ -f "$FF_DIST" ]; then sed -i 's/Fedora/Verta/g; s/=fedora$/=verta/' "$FF_DI
 systemctl disable flatpak-add-fedora-repos.service || true
 rm -f /etc/flatpak/remotes.d/fedora*.flatpakrepo /usr/share/flatpak/remotes.d/fedora*.flatpakrepo
 
+### Firewall: a "Verta" zone (same rules as Fedora Workstation's) ############
+test -f /usr/lib/firewalld/zones/Verta.xml
+sed -i -E 's/^DefaultZone=.*/DefaultZone=Verta/' /etc/firewalld/firewalld.conf
+grep -q '^DefaultZone=Verta$' /etc/firewalld/firewalld.conf
+rm -f /usr/lib/firewalld/zones/Fedora*.xml
+
+### Other places that said Fedora ###########################################
+# "Fedora Packages" web search keyword (Settings -> Web Search Keywords).
+rm -f /usr/share/kf6/searchproviders/fedora.desktop
+# Fedora's one-time Plasma script that swapped launcher icons for its logo.
+rm -f /usr/share/plasma/shells/org.kde.plasma.desktop/contents/updates/00-start-here*.js
+# Online check: Verta's (KDE's server) instead of Fedora's.
+test -f /usr/lib/NetworkManager/conf.d/20-verta-connectivity.conf
+rm -f /usr/lib/NetworkManager/conf.d/20-connectivity-fedora.conf
+
+# Nothing a person can see may say Fedora: names and comments of every app,
+# menu entry, Plasma script, search keyword and firewall zone.
+if grep -liE '^(Name|GenericName|Comment|Keywords)(\[[^]]*\])?=.*fedora' /usr/share/applications/*.desktop /usr/share/kf6/searchproviders/*.desktop 2>/dev/null    || grep -rliI fedora /usr/share/plasma /usr/lib/firewalld/zones /etc/xdg 2>/dev/null; then
+    echo 'Visible Fedora references left (above)' >&2
+    exit 1
+fi
+
 ### Firmware boot menu: "Verta" instead of "Fedora" ##########################
 systemctl enable verta-boot-entry.service
 

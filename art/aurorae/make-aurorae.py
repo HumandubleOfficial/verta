@@ -5,13 +5,16 @@
 
 Writes two themes, "Verta" (dark) and "Verta-Light". Each has a title bar in
 the colour scheme's header colour (so it blends into the app like a unified
-macOS toolbar) and Verta's own round buttons on the right:
+toolbar), a centred title, and three coloured dots for the window buttons:
 
-  - at rest: a soft glass circle with a thin, round-capped glyph
-    (close X, minimise line, maximise square, restore two squares)
-  - on hover the circle fills with colour (close red, minimise amber,
-    maximise green) and the glyph turns solid; Aurorae cross-fades the states
-  - pressed: a deeper shade; inactive windows: everything quieter
+  - close red, minimise amber, maximise green, each a small flat dot with a
+    thin darker rim; the symbol (x, -, two arrows) appears on hover
+  - pressed: a deeper shade
+  - windows in the background: all three dots turn a quiet grey, and light up
+    again under the pointer
+
+Each dot sits in a 24 px square so it stays easy to hit. The dots go on the
+left (Dock layout) or right (Taskbar layout); kwinrc decides which.
 
 Rounded window corners and shadows come from the Round-Corners KWin effect,
 so the decoration itself is square and shadowless.
@@ -20,48 +23,65 @@ import json
 import sys
 from pathlib import Path
 
-S = 24  # button canvas (px)
+S = 24          # button canvas (px): the click target
 C = S / 2
+R = 7           # dot radius: a 14 px dot
 
+# Symbols, drawn small inside the dot.
 GLYPHS = {
-    "close": '<path d="M8.6 8.6 15.4 15.4M15.4 8.6 8.6 15.4"/>',
-    "minimize": '<path d="M8 12h8"/>',
-    "maximize": '<rect x="8.3" y="8.3" width="7.4" height="7.4" rx="2"/>',
-    "restore": ('<rect x="7.4" y="9.8" width="6.6" height="6.6" rx="1.7"/>'
-                '<path d="M10 9.8V9.1a1.7 1.7 0 0 1 1.7-1.7h3.2a1.7 1.7 0 0 1 1.7 1.7'
-                'v3.2a1.7 1.7 0 0 1-1.7 1.7H14"/>'),
+    "close": ('stroke', '<path d="M9.6 9.6 14.4 14.4M14.4 9.6 9.6 14.4"/>'),
+    "minimize": ('stroke', '<path d="M9.2 12h5.6"/>'),
+    # two small triangles pointing out (make bigger) ...
+    "maximize": ('fill', '<path d="M9.3 13.4V9.3h4.1z"/><path d="M14.7 10.6v4.1h-4.1z"/>'),
+    # ... and pointing in (make smaller again)
+    "restore": ('fill', '<path d="M11.4 11.4H8.4l3-3z"/><path d="M12.6 12.6h3l-3 3z"/>'),
 }
 
-# Hover / pressed fills (top, bottom of a gentle vertical gradient) and the
-# glyph colour drawn on them.
+# Dot colours: (top, bottom) of a gentle gradient, pressed, rim.
 FILLS = {
-    "close": (("#fb7185", "#ef4444"), "#dc2626", "#ffffff"),
-    "minimize": (("#fcd34d", "#f59e0b"), "#d97706", "#422006"),
-    "maximize": (("#4ade80", "#22c55e"), "#16a34a", "#052e16"),
+    "close": (("#ff7a70", "#f0473f"), "#c9352e", "#b8322b"),
+    "minimize": (("#ffd25a", "#f4ab1f"), "#cf8a10", "#b9800f"),
+    "maximize": (("#4fdc78", "#25b84c"), "#1c913b", "#1a8a37"),
 }
 FILLS["restore"] = FILLS["maximize"]
+GLYPH_ON_DOT = ("#000000", 0.55)
 
 THEMES = {
     "Verta": {
-        "comment": "Verta's dark window title bar with round buttons",
+        "comment": "Verta's dark window title bar with coloured button dots",
         "header": "#0a0e1a", "header_inactive": "#0c111e",
         "text": "230,235,245", "text_inactive": "138,148,168",
-        "glyph": "#e6ebf5", "rest": ("#ffffff", 0.08), "rest_inactive": ("#ffffff", 0.045),
-        "glyph_alpha": 0.82, "glyph_inactive": ("#8a94a8", 0.7),
+        "idle": ("#3a4152", "#2c3241"),       # background windows: grey dots
+        "idle_rim": "#4a5266",
     },
     "Verta-Light": {
-        "comment": "Verta's light window title bar with round buttons",
+        "comment": "Verta's light window title bar with coloured button dots",
         "header": "#f6f7fa", "header_inactive": "#f1f3f7",
         "text": "17,24,39", "text_inactive": "107,114,128",
-        "glyph": "#111827", "rest": ("#0f172a", 0.065), "rest_inactive": ("#0f172a", 0.04),
-        "glyph_alpha": 0.74, "glyph_inactive": ("#6b7280", 0.62),
+        "idle": ("#d9dce3", "#ccd0d8"),
+        "idle_rim": "#bfc4ce",
     },
 }
 
 
 def glyph(kind, color, alpha):
-    return (f'<g fill="none" stroke="{color}" stroke-opacity="{alpha}" stroke-width="1.5" '
-            f'stroke-linecap="round" stroke-linejoin="round">{GLYPHS[kind]}</g>')
+    mode, body = GLYPHS[kind]
+    if mode == "stroke":
+        return (f'<g fill="none" stroke="{color}" stroke-opacity="{alpha}" stroke-width="1.35" '
+                f'stroke-linecap="round" stroke-linejoin="round">{body}</g>')
+    return f'<g fill="{color}" fill-opacity="{alpha}" stroke="none">{body}</g>'
+
+
+def dot(fill, rim, gloss=False):
+    """A dot: fill (a colour or url(#id)), a 0.6 px rim just inside its edge,
+    and (optionally) a faint highlight on the top half."""
+    out = (f'<circle cx="{C}" cy="{C}" r="{R}" fill="{fill}"/>'
+           f'<circle cx="{C}" cy="{C}" r="{R - 0.3}" fill="none" stroke="{rim}" '
+           f'stroke-opacity="0.55" stroke-width="0.6"/>')
+    if gloss:
+        out += (f'<ellipse cx="{C}" cy="{C - 3.2}" rx="4.4" ry="2.4" fill="#ffffff" '
+                f'fill-opacity="0.22"/>')
+    return out
 
 
 def state(prefix, x, body):
@@ -73,29 +93,31 @@ def state(prefix, x, body):
 
 
 def button_svg(kind, t):
-    top_bottom, pressed, on_glyph = FILLS[kind]
-    grad = f"g{kind}"
-    rest = lambda fill: f'<circle cx="{C}" cy="{C}" r="9" fill="{fill[0]}" fill-opacity="{fill[1]}"/>'
-    filled = (f'<circle cx="{C}" cy="{C}" r="9" fill="url(#{grad})"/>'
-              # thin light rim on the top half: a touch of gloss
-              f'<path d="M4.2 11.2a7.9 7.9 0 0 1 15.6 0" fill="none" stroke="#ffffff" '
-              f'stroke-opacity="0.28" stroke-width="0.8" stroke-linecap="round"/>')
-    deep = f'<circle cx="{C}" cy="{C}" r="9" fill="{pressed}"/>'
+    top_bottom, pressed, rim = FILLS[kind]
+    grad, idle = f"g{kind}", f"i{kind}"
+    lit = dot(f"url(#{grad})", rim)
+    deep = dot(pressed, rim)
+    grey = dot(f"url(#{idle})", t["idle_rim"])
+    sym = glyph(kind, *GLYPH_ON_DOT)
     states = [
-        ("active", rest(t["rest"]) + glyph(kind, t["glyph"], t["glyph_alpha"])),
-        ("hover", filled + glyph(kind, on_glyph, 0.9)),
-        ("pressed", deep + glyph(kind, on_glyph, 0.85)),
-        ("deactivated", rest(t["rest_inactive"]) + glyph(kind, t["glyph"], 0.22)),
-        ("inactive", rest(t["rest_inactive"]) + glyph(kind, *t["glyph_inactive"])),
-        ("hover-inactive", filled + glyph(kind, on_glyph, 0.9)),
-        ("pressed-inactive", deep + glyph(kind, on_glyph, 0.85)),
-        ("deactivated-inactive", rest(t["rest_inactive"]) + glyph(kind, t["glyph"], 0.16)),
+        ("active", lit),                              # colour, no symbol
+        ("hover", lit + sym),                         # symbol appears
+        ("pressed", deep + sym),
+        ("deactivated", f'<g opacity="0.35">{grey}</g>'),   # e.g. can't maximise
+        ("inactive", grey),                           # window in the background
+        ("hover-inactive", lit + sym),
+        ("pressed-inactive", deep + sym),
+        ("deactivated-inactive", f'<g opacity="0.3">{grey}</g>'),
     ]
     cells = "".join(state(p, i * (S + 4), body) for i, (p, body) in enumerate(states))
     width = len(states) * (S + 4)
     return (f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{S}" '
-            f'viewBox="0 0 {width} {S}"><defs><linearGradient id="{grad}" x1="0" y1="0" x2="0" y2="1">'
+            f'viewBox="0 0 {width} {S}"><defs>'
+            f'<linearGradient id="{grad}" x1="0" y1="0" x2="0" y2="1">'
             f'<stop offset="0" stop-color="{top_bottom[0]}"/><stop offset="1" stop-color="{top_bottom[1]}"/>'
+            f'</linearGradient>'
+            f'<linearGradient id="{idle}" x1="0" y1="0" x2="0" y2="1">'
+            f'<stop offset="0" stop-color="{t["idle"][0]}"/><stop offset="1" stop-color="{t["idle"][1]}"/>'
             f'</linearGradient></defs>{cells}</svg>\n')
 
 
@@ -118,12 +140,14 @@ def decoration_svg(t):
 
 
 def themerc(t):
+    # 24 px buttons with no spacing: 14 px dots 10 px apart, starting 11 px
+    # from the window edge.
     return f"""[General]
 ActiveTextColor={t["text"]}
 InactiveTextColor={t["text_inactive"]}
 TitleAlignment=Center
 TitleVerticalAlignment=Center
-Animation=150
+Animation=120
 Shadow=false
 UseTextShadow=false
 HaloActive=false
@@ -136,18 +160,18 @@ BorderRight=1
 BorderBottom=1
 TitleEdgeTop=6
 TitleEdgeBottom=6
-TitleEdgeLeft=10
-TitleEdgeRight=8
+TitleEdgeLeft=6
+TitleEdgeRight=6
 TitleEdgeTopMaximized=4
 TitleEdgeBottomMaximized=4
-TitleEdgeLeftMaximized=10
-TitleEdgeRightMaximized=8
-TitleBorderLeft=8
-TitleBorderRight=8
+TitleEdgeLeftMaximized=6
+TitleEdgeRightMaximized=6
+TitleBorderLeft=10
+TitleBorderRight=10
 TitleHeight=24
 ButtonWidth=24
 ButtonHeight=24
-ButtonSpacing=4
+ButtonSpacing=0
 ButtonMarginTop=0
 ButtonMarginTopMaximized=0
 ExplicitButtonSpacer=8
@@ -173,7 +197,7 @@ Comment={t["comment"]}
 X-KDE-PluginInfo-Name={name}
 X-KDE-PluginInfo-Author=Verta
 X-KDE-PluginInfo-License=GPL-2.0-or-later
-X-KDE-PluginInfo-Version=1.0
+X-KDE-PluginInfo-Version=1.1
 """)
         (d / "metadata.json").write_text(json.dumps({
             "KPlugin": {
@@ -182,7 +206,7 @@ X-KDE-PluginInfo-Version=1.0
                 "Id": name,
                 "License": "GPL-2.0-or-later",
                 "Name": name.replace("-", " "),
-                "Version": "1.0",
+                "Version": "1.1",
             },
         }, indent=4) + "\n")
         print(f"aurorae: wrote {d}")

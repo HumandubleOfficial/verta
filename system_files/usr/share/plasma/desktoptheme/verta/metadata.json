@@ -5,10 +5,10 @@
                 "Name": "Verta"
             }
         ],
-        "Description": "Verta glass: frosted taskbar and popups, Windows 11-style app indicators",
+        "Description": "Verta liquid glass: clear, lit glass for the menu bar, dock, taskbar and popups",
         "Id": "verta",
         "Name": "Verta",
-        "Version": "1.0",
+        "Version": "2.0",
         "Website": "https://github.com/HumandubleOfficial/verta"
     },
     "X-Plasma-API": "5.0"

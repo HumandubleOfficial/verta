@@ -19,3 +19,15 @@ for page in appearance display sound gaming apps updates about; do
 done
 rm -rf "$T"
 echo "selftest: Verta Settings opens on every page"
+
+# Desktop defaults must be readable by everyone: a file only root can read is
+# silently ignored by Plasma and the apps (the look would quietly fall back).
+UNREADABLE="$(find /usr/share/kde-settings /etc/xdg /usr/share/plasma /usr/share/kwin \
+    /usr/share/verta /usr/share/color-schemes /usr/share/aurorae /usr/share/icons/Verta \
+    -type f ! -perm -o=r 2>/dev/null || true)"
+if [ -n "$UNREADABLE" ]; then
+    echo "selftest: these desktop files are readable by root only:" >&2
+    echo "$UNREADABLE" >&2
+    exit 1
+fi
+echo "selftest: desktop defaults are readable by everyone"

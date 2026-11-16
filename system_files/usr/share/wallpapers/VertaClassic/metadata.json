@@ -1,0 +1,12 @@
+{
+    "KPlugin": {
+        "Authors": [
+            {
+                "Name": "Verta"
+            }
+        ],
+        "Id": "VertaClassic",
+        "License": "CC-BY-SA-4.0",
+        "Name": "Verta Classic"
+    }
+}

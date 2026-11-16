@@ -7,23 +7,36 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 ART="$ROOT/art"
 SF="$ROOT/system_files"
 
-if ! command -v rsvg-convert >/dev/null; then
+if ! command -v rsvg-convert >/dev/null || ! python3 -c 'import numpy, PIL' 2>/dev/null; then
     SUDO=""; [ "$(id -u)" -ne 0 ] && SUDO=sudo
-    $SUDO apt-get install -y librsvg2-bin
+    $SUDO apt-get install -y librsvg2-bin python3-numpy python3-pil
 fi
 
 install_to() { mkdir -p "$(dirname "$2")"; cp "$1" "$2"; }
 
-### Wallpaper (desktop, lock screen, login screen) ###########################
-WP="$SF/usr/share/wallpapers/Verta/contents/images"
-mkdir -p "$WP"
-rm -f "$WP"/*
-rsvg-convert -w 3840 -h 2160 "$ART/wallpaper.svg" -o "$WP/3840x2160.png"
-rsvg-convert -w 1920 -h 1080 "$ART/wallpaper.svg" -o "$SF/usr/share/wallpapers/Verta/contents/screenshot.png"
+### Wallpapers (desktop, lock screen, login screen) ##########################
+# "Verta" is Flow (art/wallpaper/make-wallpaper.py): a light picture and a dark
+# one; Plasma shows the one that matches Light or Dark appearance.
+# "Verta Classic" is the earlier logo-and-stars picture (art/wallpaper.svg).
+WPD="$SF/usr/share/wallpapers/Verta/contents"
+rm -rf "$WPD"; mkdir -p "$WPD/images" "$WPD/images_dark"
+TMP="$(mktemp -d)"
+python3 -I "$ART/wallpaper/make-wallpaper.py" "$TMP" 3840 2160
+mv "$TMP/flow-light.jpg" "$WPD/images/3840x2160.jpg"
+mv "$TMP/flow-dark.jpg" "$WPD/images_dark/3840x2160.jpg"
+python3 -I -c 'import sys; from PIL import Image; Image.open(sys.argv[1]).resize((960, 540), Image.LANCZOS).save(sys.argv[2])' \
+    "$WPD/images_dark/3840x2160.jpg" "$WPD/screenshot.png"
+rm -rf "$TMP"
+WPC="$SF/usr/share/wallpapers/VertaClassic/contents"
+rm -rf "$WPC"; mkdir -p "$WPC/images"
+rsvg-convert -w 3840 -h 2160 "$ART/wallpaper.svg" -o "$WPC/images/3840x2160.png"
+rsvg-convert -w 960 -h 540 "$ART/wallpaper.svg" -o "$WPC/screenshot.png"
 
 ### Logo: start button, About This System, app icon ##########################
 install_to "$ART/logo.svg" "$SF/usr/share/icons/hicolor/scalable/apps/verta-logo.svg"
 install_to "$ART/logo.svg" "$SF/usr/share/pixmaps/verta-logo.svg"
+install_to "$ART/logo-symbolic.svg" "$SF/usr/share/icons/hicolor/scalable/apps/verta-logo-symbolic.svg"
+install_to "$ART/controlcenter-symbolic.svg" "$SF/usr/share/icons/hicolor/scalable/apps/verta-controlcenter-symbolic.svg"
 
 ### Login splash (QML): V and ring as separate layers so the ring can spin ####
 SPLASH="$SF/usr/share/plasma/look-and-feel/org.verta.desktop/contents/splash/images"
@@ -61,6 +74,7 @@ rm -rf "$ICONS/Verta" "$ICONS/Verta-Light"
 cp -r "$TMP/Verta" "$TMP/Verta-Light" "$ICONS/"
 rsvg-convert -w 1120 "$TMP/preview.svg" -o "$ART/icons/preview.png"
 install_to "$ICONS/Verta/scalable/apps/org.verta.Settings.svg" "$ICONS/hicolor/scalable/apps/org.verta.Settings.svg"
+install_to "$ICONS/Verta/scalable/apps/verta-launchpad.svg" "$ICONS/hicolor/scalable/apps/verta-launchpad.svg"
 rm -rf "$TMP"
 
 ### Verta Plasma style (taskbar, popups, tooltips, highlights) ###############

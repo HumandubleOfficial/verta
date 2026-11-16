@@ -5,10 +5,10 @@
                 "Name": "Verta"
             }
         ],
-        "Description": "Verta's dark window title bar with round buttons",
+        "Description": "Verta's dark window title bar with coloured button dots",
         "Id": "Verta",
         "License": "GPL-2.0-or-later",
         "Name": "Verta",
-        "Version": "1.0"
+        "Version": "1.1"
     }
 }

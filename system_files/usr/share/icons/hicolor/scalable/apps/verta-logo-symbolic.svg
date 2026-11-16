@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 512 512">
+  <!-- One-colour Verta mark for the menu bar; Plasma paints it in the text colour. -->
+  <style type="text/css" id="current-color-scheme">.ColorScheme-Text { color:#232629; }</style>
+  <g class="ColorScheme-Text" fill="currentColor" stroke="currentColor">
+    <circle cx="256" cy="256" r="196" fill="none" stroke-width="44"
+            stroke-linecap="round" stroke-dasharray="980 251.5" transform="rotate(-8.25 256 256)"/>
+    <circle cx="395" cy="117" r="30" stroke="none"/>
+    <polygon points="140,140 210,140 256,262 302,140 372,140 256,398" stroke="none"/>
+  </g>
+</svg>

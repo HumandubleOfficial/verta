@@ -5,8 +5,11 @@ Plasma draws panels and popups from "frame" SVGs: nine named pieces (four
 corners, four edges, centre) per state, stretched to size. This script draws
 those pieces from a few parameters so the whole style stays consistent:
 
-  * glass taskbar and popups: translucent, rounded, a hairline rim, soft shadow
-    and a blur mask that follows the rounded corners
+  * liquid glass menu bar, dock, taskbar and popups: clear, only lightly
+    tinted glass with a white hairline rim, a bright lit top edge and a soft
+    sheen (light falling on glass from above), a soft shadow and a mask that
+    follows the rounded corners. The Glass KWin effect (build_files/25-glass.sh)
+    does the rest behind them: blur, lensing at the edges, glints on the rim.
   * task buttons like Windows 11: a short dash under running apps, a longer
     accent-coloured dash under the active one, a soft rounded pill on hover
   * rounded hover/selection pills in menus and lists (Start menu, tray, ...)
@@ -39,6 +42,8 @@ def paint(cls, alpha):
         return 'fill="#000" fill-opacity="0"'
     if cls == "black":
         return f'fill="#000" fill-opacity="{alpha}"'
+    if cls == "white":
+        return f'fill="#fff" fill-opacity="{alpha}"'
     return f'class="ColorScheme-{cls}" style="fill:currentColor;fill-opacity:{alpha}"'
 
 
@@ -47,13 +52,18 @@ class Sheet:
 
     def __init__(self):
         self.parts = []
-        self.defs = []
+        # Vertical white fade (used with an opacity): the sheen over the top
+        # of a glass frame and the lit edge that fades down its corners.
+        self.defs = ['<linearGradient id="fade" x1="0" y1="0" x2="0" y2="1">'
+                     '<stop offset="0" stop-color="#fff" stop-opacity="1"/>'
+                     '<stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>']
         self.x = 0
 
     def add(self, s):
         self.parts.append(s)
 
-    def frame(self, prefix, r, fill, rim=None, cw=None, ch=None, dash=None, hints=None, stretch=False):
+    def frame(self, prefix, r, fill, rim=None, cw=None, ch=None, dash=None, hints=None, stretch=False,
+              lit=0, sheen=0, compose=False):
         """A rounded frame.
 
         r      corner radius;  cw/ch  corner piece size (>= r), i.e. border sizes
@@ -61,6 +71,13 @@ class Sheet:
         dash   (class, alpha) indicator line along the bottom, inset by cw on
                both sides (so its length = width - 2*cw), with rounded ends
         hints  (top, right, bottom, left) content margins
+        compose  the body is one piece: the centre is stretched over the whole
+               frame and cut to shape by the mask (needs a "mask" frame); the
+               edge pieces only carry the rim. Separate translucent pieces
+               leave faint seams where they meet.
+        lit    opacity of a white highlight just inside the top edge that fades
+               down the rounded corners;  sheen  opacity of a soft white glow
+               over the top of the frame
         """
         cw = cw or r
         ch = ch or r
@@ -69,6 +86,7 @@ class Sheet:
         W, H = 2 * cw + E, 2 * ch + E
         self.x += W + 20
         f = paint(*fill)
+        fb = paint(None, 0) if compose else f    # body of the edge pieces
 
         def cell(name, x, y, w, h, body):
             self.add(f'<g id="{p}{name}" transform="translate({ox + x} {oy + y})">{body}</g>')
@@ -114,15 +132,34 @@ class Sheet:
                 return f'<path d="M0 {dy} A1.5 1.5 0 0 1 0 {dy + dh} Z" {d}/>'
             return ""
 
+        def light(which):
+            """Sheen and lit edge for the top pieces."""
+            out = ""
+            if which in ("topleft", "topright"):
+                if sheen:
+                    out += f'<path d="{corner_path(cw, ch, r, which)}" fill="url(#fade)" fill-opacity="{sheen}"/>'
+                if lit:
+                    q = r - 1.5
+                    d = (f"M1.5 {ch} V{r} A{q} {q} 0 0 1 {r} 1.5 H{cw}" if which == "topleft"
+                         else f"M0 1.5 H{cw - r} A{q} {q} 0 0 1 {cw - 1.5} {r} V{ch}")
+                    out += f'<path d="{d}" fill="none" stroke="url(#fade)" stroke-opacity="{lit}" stroke-width="1"/>'
+            elif which == "top":
+                if sheen:
+                    out += f'<rect width="{E}" height="{ch}" fill="url(#fade)" fill-opacity="{sheen}"/>'
+                if lit:
+                    out += f'<rect y="1" width="{E}" height="1" fill="#fff" fill-opacity="{lit}"/>'
+            return out
+
         for which, x, y in (("topleft", 0, 0), ("topright", cw + E, 0),
                             ("bottomright", cw + E, ch + E), ("bottomleft", 0, ch + E)):
             cell(which, x, y, cw, ch,
-                 f'<path d="{corner_path(cw, ch, r, which)}" {f}/>' + rim_corner(cw, ch, r, which) + dash_body(which))
-        cell("top", cw, 0, E, ch, f'<rect width="{E}" height="{ch}" {f}/>' + rim_rect(0, 0, E, 1))
+                 f'<path d="{corner_path(cw, ch, r, which)}" {fb}/>' + light(which)
+                 + rim_corner(cw, ch, r, which) + dash_body(which))
+        cell("top", cw, 0, E, ch, f'<rect width="{E}" height="{ch}" {fb}/>' + light("top") + rim_rect(0, 0, E, 1))
         cell("bottom", cw, ch + E, E, ch,
-             f'<rect width="{E}" height="{ch}" {f}/>' + rim_rect(0, ch - 1, E, 1) + dash_body("bottom"))
-        cell("left", 0, ch, cw, E, f'<rect width="{cw}" height="{E}" {f}/>' + rim_rect(0, 0, 1, E))
-        cell("right", cw + E, ch, cw, E, f'<rect width="{cw}" height="{E}" {f}/>' + rim_rect(cw - 1, 0, 1, E))
+             f'<rect width="{E}" height="{ch}" {fb}/>' + rim_rect(0, ch - 1, E, 1) + dash_body("bottom"))
+        cell("left", 0, ch, cw, E, f'<rect width="{cw}" height="{E}" {fb}/>' + rim_rect(0, 0, 1, E))
+        cell("right", cw + E, ch, cw, E, f'<rect width="{cw}" height="{E}" {fb}/>' + rim_rect(cw - 1, 0, 1, E))
         cell("center", cw, ch, E, E, f'<rect width="{E}" height="{E}" {f}/>')
 
         if hints:
@@ -135,6 +172,8 @@ class Sheet:
                 hy += 8
         if stretch:
             self.add(f'<rect id="{p}hint-stretch-borders" x="{ox}" y="{oy + H + 40}" width="1" height="1" fill="none"/>')
+        if compose:
+            self.add(f'<rect id="{p}hint-compose-over-border" x="{ox + 4}" y="{oy + H + 40}" width="1" height="1" fill="none"/>')
 
     def shadow(self, size, alpha, prefix="shadow"):
         """Soft drop shadow pieces around a frame (slightly heavier below)."""
@@ -181,10 +220,14 @@ class Sheet:
                      f'<defs>{STYLE}{"".join(self.defs)}</defs>{"".join(self.parts)}</svg>\n')
 
 
-def glass(path, r, alpha, hints, shadow=None, rim_alpha=0.10):
-    """Translucent rounded background + matching blur mask (+ shadow)."""
+def glass(path, r, alpha, hints, shadow=None, rim_alpha=0.10, lit=0.0, sheen=0.0):
+    """Translucent rounded background + matching blur mask (+ shadow).
+    The rim is white in Dark and Light alike: glass edges catch the light."""
     sh = Sheet()
-    sh.frame("", r, ("Background", alpha), rim=("Text", rim_alpha), hints=hints)
+    # One seamless body (compose): the tint is a single stretched piece cut
+    # to the rounded shape by the mask; the edge pieces only add the hairline.
+    sh.frame("", r, ("Background", alpha), rim=("white", rim_alpha), hints=hints, lit=lit, sheen=sheen,
+             stretch=True, compose=True)
     sh.frame("mask", r, ("black", 1))
     if shadow:
         sh.shadow(*shadow)
@@ -230,26 +273,33 @@ def viewitem(path):
 
 
 def main():
-    # Taskbar: normal / glass (blur available) / solid (a window is maximised).
-    panel_shadow = (18, 0.30)
-    glass("widgets/panel-background.svg", 16, 0.92, (4, 8, 4, 8), panel_shadow)
-    glass("translucent/widgets/panel-background.svg", 16, 0.62, (4, 8, 4, 8), panel_shadow)
-    glass("solid/widgets/panel-background.svg", 16, 0.98, (4, 8, 4, 8), panel_shadow)
-    # Popups (Start menu, tray, calendar) and tooltips.
-    glass("dialogs/background.svg", 14, 0.95, (8, 8, 8, 8), (22, 0.35))
-    glass("translucent/dialogs/background.svg", 14, 0.80, (8, 8, 8, 8), (22, 0.35))
-    glass("widgets/tooltip.svg", 10, 0.95, (6, 8, 6, 8), (14, 0.28))
-    glass("translucent/widgets/tooltip.svg", 10, 0.84, (6, 8, 6, 8), (14, 0.28))
+    # Liquid glass. Plasma uses the plain files below while the Glass effect
+    # runs (and the translucent/ copies if someone switches back to Plasma's
+    # own blur + contrast); solid/ is for a panel set to "opaque".
+    # Menu bar, dock and taskbar: clear glass with a bright lit top edge.
+    # Popups a little more tinted so text stays easy to read.
+    # One fine hairline; the Glass effect adds the glints on top.
+    panel = dict(rim_alpha=0.09, lit=0.22)
+    dialog = dict(rim_alpha=0.09, lit=0.20)
+    tooltip = dict(rim_alpha=0.08, lit=0.16)
+    for variant in ("", "translucent/"):
+        # No drop shadow under panels: KWin draws it beneath the translucent
+        # dock, where its pieces met in a line across the middle. The rim
+        # and the glass edge already set the dock off the wallpaper.
+        glass(f"{variant}widgets/panel-background.svg", 18, 0.28, (4, 8, 4, 8), None, **panel)
+        glass(f"{variant}dialogs/background.svg", 16, 0.56, (8, 8, 8, 8), (28, 0.32), **dialog)
+        glass(f"{variant}widgets/tooltip.svg", 16, 0.66, (6, 8, 6, 8), (16, 0.26), **tooltip)
+    glass("solid/widgets/panel-background.svg", 18, 0.98, (4, 8, 4, 8), (26, 0.30), lit=0.10)
     tasks("widgets/tasks.svg")
     viewitem("widgets/viewitem.svg")
 
     meta = {
         "KPlugin": {
             "Authors": [{"Name": "Verta"}],
-            "Description": "Verta glass: frosted taskbar and popups, Windows 11-style app indicators",
+            "Description": "Verta liquid glass: clear, lit glass for the menu bar, dock, taskbar and popups",
             "Id": "verta",
             "Name": "Verta",
-            "Version": "1.0",
+            "Version": "2.0",
             "Website": "https://github.com/HumandubleOfficial/verta",
         },
         "X-Plasma-API": "5.0",
@@ -260,7 +310,7 @@ def main():
     with open(os.path.join(OUT, "plasmarc"), "w", encoding="utf-8") as fh:
         fh.write("[AdaptiveTransparency]\nenabled=true\n\n"
                  "[BlurBehindEffect]\nenabled=true\n\n"
-                 "[ContrastEffect]\nenabled=true\ncontrast=0.3\nintensity=1.0\nsaturation=1.8\n")
+                 "[ContrastEffect]\nenabled=true\ncontrast=0.6\nintensity=1.05\nsaturation=1.7\n")
     print(f"Wrote Plasma style to {OUT}")
 
 

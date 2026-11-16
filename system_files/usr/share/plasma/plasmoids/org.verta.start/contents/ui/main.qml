@@ -1,5 +1,10 @@
 /*
-    Verta Start: the Start menu on Verta's taskbar.
+    Verta Start: the app launcher.
+
+    In the dock (Dock layout) it opens Launchpad: every app in a full-screen
+    grid over the blurred desktop, with search. On the taskbar (Taskbar
+    layout) it opens the Start menu: pinned apps, recent files, all apps and
+    search in one glass panel. The "launchpad" setting picks which.
 
     Built on the same app, search and favourites back ends as KDE's own
     launchers (org.kde.plasma.private.kicker), so pinned apps, search results
@@ -19,13 +24,18 @@ import org.kde.plasma.private.kicker as Kicker
 PlasmoidItem {
     id: start
 
-    Plasmoid.icon: Plasmoid.configuration.icon || "verta-logo"
-    Plasmoid.status: expanded ? PlasmaCore.Types.RequiresAttentionStatus : PlasmaCore.Types.PassiveStatus
-    preferredRepresentation: compactRepresentation
-    hideOnWindowDeactivate: true
-    activationTogglesExpanded: true
+    readonly property bool launchpad: Plasmoid.configuration.launchpad
 
-    toolTipMainText: "Start"
+    Plasmoid.icon: Plasmoid.configuration.icon || (launchpad ? "verta-launchpad" : "verta-logo")
+    Plasmoid.status: (expanded || (launchpadWindow && launchpadWindow.visible))
+        ? PlasmaCore.Types.RequiresAttentionStatus : PlasmaCore.Types.PassiveStatus
+    // Launchpad is its own full-screen window, so Plasma must not open a popup
+    // for it: the button is then the "full" representation, shown in place.
+    preferredRepresentation: launchpad ? fullRepresentation : compactRepresentation
+    hideOnWindowDeactivate: true
+    activationTogglesExpanded: !launchpad
+
+    toolTipMainText: launchpad ? "Apps" : "Start"
     toolTipSubText: ""
 
     // Every app (all-apps list) and the pinned apps.
@@ -90,12 +100,51 @@ PlasmoidItem {
         id: processRunner
     }
 
-    compactRepresentation: StartButton {}
-    fullRepresentation: StartMenu {}
+    compactRepresentation: launchpad ? null : buttonComponent
+    fullRepresentation: launchpad ? buttonComponent : menuComponent
+
+    Component {
+        id: buttonComponent
+        StartButton {}
+    }
+    Component {
+        id: menuComponent
+        StartMenu {}
+    }
+
+    // Launchpad: made once, the first time it's needed.
+    property var launchpadWindow: null
+    function toggleLaunchpad() {
+        if (!launchpadWindow) {
+            const c = Qt.createComponent(Qt.resolvedUrl("Launchpad.qml"))
+            if (c.status !== Component.Ready) {
+                console.warn("Verta Start: Launchpad failed to load:", c.errorString())
+                return
+            }
+            launchpadWindow = c.createObject(start)
+        }
+        launchpadWindow.toggle()
+    }
+
+    // The Meta (Windows) key.
+    Connections {
+        target: Plasmoid
+        enabled: start.launchpad
+        function onActivated() { start.toggleLaunchpad() }
+    }
+
+    // Drag an app from Launchpad onto the dock to keep it there.
+    Kicker.DragHelper {
+        id: dragHelper
+        dragIconSize: Kirigami.Units.iconSizes.huge
+    }
 
     function launch(model, row) {
         model.trigger(row, "", null)
         start.expanded = false
+        if (launchpadWindow && launchpadWindow.visible) {
+            launchpadWindow.toggle()
+        }
     }
 
     onExpandedChanged: isExpanded => {

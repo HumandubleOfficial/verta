@@ -24,6 +24,7 @@ from PySide6.QtWidgets import QApplication
 
 HERE = Path(__file__).resolve().parent
 UPDATE_REGISTRY = "ghcr.io/humandubleofficial"
+LAYOUTS = Path("/usr/share/verta/layouts")     # dock.js, taskbar.js (Plasma scripts)
 CONFIG = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config"))
 STATE = Path(os.environ.get("XDG_STATE_HOME", Path.home() / ".local/state")) / "verta-settings/updates.json"
 UNITS = {"b": 1, "byte": 1, "bytes": 1, "kb": 1e3, "mb": 1e6, "gb": 1e9, "tb": 1e12,
@@ -221,6 +222,38 @@ class Backend(QObject):
     @Slot(str)
     def setWallpaper(self, path):
         self.run("wallpaper", ["plasma-apply-wallpaperimage", path])
+
+    @Slot(result=str)
+    def desktopLayout(self):
+        """'dock' (menu bar + dock) or 'taskbar' (one bar at the bottom)."""
+        f = CONFIG / "plasma-org.kde.plasma.desktop-appletsrc"
+        try:
+            text = f.read_text(errors="replace")
+        except OSError:
+            return "dock"
+        if "plugin=org.verta.menu" in text:
+            return "dock"
+        return "taskbar" if "plugin=org.kde.plasma.icontasks" in text else "dock"
+
+    @Slot(str)
+    def setDesktopLayout(self, name):
+        if name not in ("dock", "taskbar"):
+            return
+        try:
+            body = (LAYOUTS / f"{name}.js").read_text()
+        except OSError:
+            return
+        # Replace the current panels with the chosen layout's.
+        script = "panels().forEach(function (p) { p.remove(); });\n" + body
+        self.run("layout", ["qdbus-qt6", "org.kde.plasmashell", "/PlasmaShell",
+                            "org.kde.PlasmaShell.evaluateScript", script])
+        # Apps' menus: in the menu bar (Dock) or back in their windows (Taskbar).
+        sh(["qdbus-qt6", "org.kde.kded6", "/kded", "org.kde.kded6." +
+            ("loadModule" if name == "dock" else "unloadModule"), "appmenu"])
+        # Window buttons: on the left with the Dock, on the right with the Taskbar.
+        kwrite("kwinrc", "org.kde.kdecoration2", "ButtonsOnLeft", "XIA" if name == "dock" else "")
+        kwrite("kwinrc", "org.kde.kdecoration2", "ButtonsOnRight", "" if name == "dock" else "IAX")
+        kwin_reconfigure()
 
     @Slot(result=float)
     def animationSpeed(self):
@@ -566,13 +599,14 @@ class Backend(QObject):
             "name": rel.get("NAME", "Verta"),
             "version": rel.get("IMAGE_VERSION") or rel.get("VERSION_ID", ""),
             "edition": "NVIDIA" if "nvidia" in rel.get("IMAGE_ID", "") else "AMD / Intel",
-            "base": f"Fedora {rel.get('VERSION_ID', '')}".strip(),
             "hostname": socket.gethostname(),
             "cpu": f"{cpu} ({threads} threads)" if cpu else "",
             "gpu": " + ".join(gpus),
             "memory": mem,
             "disk": disk,
-            "kernel": os.uname().release,
+            # "7.3.4-ogc6.1.fc45.x86_64" -> "Linux 7.3.4 (gaming kernel)"
+            "kernel": "Linux " + os.uname().release.split("-")[0]
+                      + (" (gaming kernel)" if "ogc" in os.uname().release else ""),
             "secureBoot": "On" if "enabled" in sb.lower() else ("Off" if sb else "Unknown"),
         }
 
