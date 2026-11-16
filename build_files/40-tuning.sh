@@ -51,3 +51,8 @@ for unit in rpm-ostree-countme.timer fedora-atomic-desktop-mandb-update.service;
 done
 
 systemctl enable verta-flatpak-setup.service
+
+### Updates: Verta downloads new versions by itself every day (rpm-ostree
+### automatic updates, policy "stage"); this tells people when one is ready.
+grep -q "^AutomaticUpdatePolicy=stage" /etc/rpm-ostreed.conf
+systemctl --global enable verta-update-notify.path

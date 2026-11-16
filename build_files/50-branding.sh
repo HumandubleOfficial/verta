@@ -88,6 +88,34 @@ if grep -rlI -E 'wallpapers/(Fedora|F[0-9]{2})|org\.fedoraproject\.fedora' \
     echo 'Fedora theme/wallpaper references left (above)' >&2
     exit 1
 fi
+# GNOME-style Fedora backgrounds (some apps' wallpaper pickers list these too).
+rm -rf /usr/share/backgrounds/f[0-9][0-9] /usr/share/backgrounds/fedora-workstation
+# NeoChat's preset "Fedora" chat room.
+rm -f /usr/share/kde-settings/kde-profile/default/xdg/neochatrc
+
+### The OS entry the App Store (Discover) shows: Verta, not "Fedora Linux" ####
+# The id stays (it ties the entry to this system); name, text and links are
+# Verta's, and Fedora's release list (its upgrade prompts) is gone.
+OS_META=/usr/share/metainfo/org.fedoraproject.fedora.metainfo.xml
+if [ -f "$OS_META" ]; then
+    cat > "$OS_META" <<EOF
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="operating-system">
+  <id>org.fedoraproject.fedora</id>
+  <name>Verta</name>
+  <summary>The gaming desktop that updates itself</summary>
+  <description>
+    <p>Verta is a gaming desktop built on Fedora Atomic: Steam and gaming tools ready to go, a clean Windows-like desktop, and whole-system updates that can always be undone.</p>
+  </description>
+  <url type="homepage">https://github.com/HumandubleOfficial/verta</url>
+  <metadata_license>MIT</metadata_license>
+  <developer_name>Verta</developer_name>
+  <releases>
+    <release version="${VERTA_VERSION:-1}" type="stable"/>
+  </releases>
+</component>
+EOF
+fi
 
 ### Firefox ##################################################################
 FF_PREFS=/usr/lib64/firefox/browser/defaults/preferences/firefox-redhat-default-prefs.js

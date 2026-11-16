@@ -18,7 +18,8 @@ already include media codecs and RPM Fusion.
 | **Window buttons** | Verta's own title bars (Aurorae themes **Verta** / **Verta Light**, `art/aurorae/make-aurorae.py`): round close, minimise and maximise/restore buttons with thin rounded glyphs that fill red, amber and green on hover, centred titles, unified with the app's header colour |
 | **Menus** | **Darkly** widget style: rounder buttons and fields, frosted-glass right-click menus with roomy rows and soft shadows, smooth page and focus animations |
 | **Glass** | Frosted blur behind panels, menus, popups and the terminal; rounded window corners with a thin blue outline and soft blue glow on the active window (KDE-Rounded-Corners); borderless frames |
-| **Animations** | Windows glide in/out (Verta Motion), minimised windows glide into their taskbar icon and spring back out (Verta Minimise; clicking again mid-way reverses it), the Start button squishes and springs, Start menu tiles drift in one after another, popups slide a little faster, everything 25% quicker than stock Plasma; animated login splash (V pops in, ring orbits) and boot splash (ring spins around the V) |
+| **Cursor** | **Verta** pointers (`art/cursors/make-cursors.py`): crisp, Mac-like black pointers with a white outline and soft shadow, coloured badges for help / copy / link / no-drop, and the Verta ring as the busy spinner; sharp at any size (SVG) with classic versions for X11 apps and games |
+| **Animations** | Windows rise in and, when closed, shrink back and fade at once (Verta Motion); maximise and restore morph smoothly to the new size (Verta Resize); minimised windows get pulled into their taskbar icon and spring back out (Verta Minimise; clicking again mid-way reverses it); launching an app bounces its icon by the pointer and pulses its taskbar button; the Start button squishes and springs, Start menu tiles drift in one after another, popups slide a little faster, everything 25% quicker than stock Plasma; animated login splash (V pops in, ring orbits) and boot splash (ring spins around the V) |
 | **Layout** | Windows 11-style floating taskbar: Start (Verta logo) and pinned apps centred, tray and clock on the right, show-desktop corner |
 | **Start menu** | **Verta Start** (`org.verta.start`): search field on top (apps, files, settings, calculator; Enter opens the top hit), a grid of pinned apps, recent files, an A–Z "All apps" list that slides in, and your name, Settings, lock, sleep, restart and shut down at the bottom. Right-click any app to pin or unpin it. Opens with the Windows key |
 | **Plasma style** | **Verta** (`art/plasma/make-plasma-style.py`): frosted-glass taskbar, Start menu, tray popups and tooltips with rounded corners, a hairline rim and soft shadow; rounded hover pills; a short dash under running apps and an accent-coloured dash under the active one, like Windows 11; hovering an app spotlights its windows |
@@ -199,9 +200,18 @@ publishes them as:
 - `ghcr.io/humandubleofficial/verta-nvidia:latest`
 
 (plus date tags). ISOs built with `scripts/build-iso.sh` install pointing at those images, so an
-installed Verta updates itself: a timer downloads new builds in the background and they are
-applied at the next restart. To update by hand, use **Settings → Updates** (or Discover, or
-`sudo bootc upgrade`), then restart.
+installed Verta updates itself, no commands needed:
+
+1. Every day (04:00, or at the next start-up if the PC was off; never on metered connections)
+   Verta downloads the newest build in the background (rpm-ostree automatic updates, policy `stage`).
+2. When it's downloaded, a notification says **"Verta X is ready"** with **Restart now** and
+   **Later** (`verta-update-notify`, a user service that watches for a staged update).
+3. The new version starts at the next restart; the previous one stays available to go back to.
+
+**Settings → Updates** shows the same thing at a glance: it checks as soon as it opens, has
+**Update now** with real download progress, **Restart now** when ready, an **Automatic updates**
+switch, and **Go back** to the previous version (with a confirmation). `sudo bootc upgrade`
+still works too.
 
 Installed from an older ISO that still points at `localhost/verta`? Settings → Updates shows a
 **Connect** button, or run once:

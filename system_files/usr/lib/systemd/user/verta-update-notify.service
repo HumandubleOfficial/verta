@@ -1,0 +1,11 @@
+[Unit]
+Description=Tell the user a Verta update is ready to install
+After=graphical-session.target
+
+[Service]
+# Stays "active" after showing the notice, so it is shown once per login and
+# not repeated while the update waits for a restart.
+Type=oneshot
+RemainAfterExit=yes
+TimeoutStartSec=infinity
+ExecStart=/usr/libexec/verta-update-notify

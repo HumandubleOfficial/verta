@@ -1,0 +1,19 @@
+{
+    "KPackageStructure": "KWin/Effect",
+    "KPlugin": {
+        "Authors": [
+            {
+                "Name": "Verta"
+            }
+        ],
+        "Category": "Appearance",
+        "Description": "Verta's maximise animation: windows grow smoothly to fill the screen and settle back when restored",
+        "EnabledByDefault": false,
+        "Id": "verta_resize",
+        "License": "GPL",
+        "Name": "Verta Resize"
+    },
+    "X-KDE-Ordering": 60,
+    "X-KWin-Exclusive-Category": "maximize",
+    "X-Plasma-API": "javascript"
+}

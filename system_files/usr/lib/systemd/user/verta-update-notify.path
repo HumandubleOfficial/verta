@@ -1,0 +1,9 @@
+[Unit]
+Description=Watch for a downloaded Verta update
+
+[Path]
+# ostree writes this file when a new version is staged for the next boot.
+PathExists=/run/ostree/staged-deployment
+
+[Install]
+WantedBy=graphical-session.target

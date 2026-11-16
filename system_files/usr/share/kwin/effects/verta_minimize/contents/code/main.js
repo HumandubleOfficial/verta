@@ -100,9 +100,10 @@ class VertaMinimize {
             keepAlive: false,
             animations: [
                 { type: Effect.Size, from: t.full, to: t.size },
-                { type: Effect.Translation, from: { value1: 0, value2: 0 }, to: t.offset },
+                // Picks up speed as it heads for the icon, like being pulled in.
+                { type: Effect.Translation, from: { value1: 0, value2: 0 }, to: t.offset, curve: QEasingCurve.InQuart },
                 // Stay solid at first, then fade as it reaches the icon.
-                { type: Effect.Opacity, from: 1, to: 0, curve: QEasingCurve.InQuad },
+                { type: Effect.Opacity, from: 1, to: 0, curve: QEasingCurve.InCubic },
             ],
         });
     }

@@ -14,6 +14,7 @@ import re
 import socket
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 from PySide6.QtCore import QObject, QProcess, QTimer, QUrl, Signal, Slot
@@ -24,6 +25,24 @@ from PySide6.QtWidgets import QApplication
 HERE = Path(__file__).resolve().parent
 UPDATE_REGISTRY = "ghcr.io/humandubleofficial"
 CONFIG = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config"))
+STATE = Path(os.environ.get("XDG_STATE_HOME", Path.home() / ".local/state")) / "verta-settings/updates.json"
+UNITS = {"b": 1, "byte": 1, "bytes": 1, "kb": 1e3, "mb": 1e6, "gb": 1e9, "tb": 1e12,
+         "kib": 1024, "mib": 1024 ** 2, "gib": 1024 ** 3, "tib": 1024 ** 4}
+
+
+def size_bytes(text):
+    """'38.6 MB' -> 38600000.0 (0 if it can't be read)."""
+    m = re.match(r"([\d.]+)\s*([A-Za-z]+)", text.strip())
+    if not m:
+        return 0.0
+    return float(m.group(1)) * UNITS.get(m.group(2).lower(), 0)
+
+
+def human(n):
+    for unit, size in (("GB", 1e9), ("MB", 1e6), ("kB", 1e3)):
+        if n >= size:
+            return f"{n / size:.1f} {unit}" if unit == "GB" else f"{n / size:.0f} {unit}"
+    return f"{n:.0f} bytes"
 
 
 def sh(argv, timeout=8):
@@ -64,6 +83,8 @@ def os_release():
 class Backend(QObject):
     # tag, success, output
     finished = Signal(str, bool, str)
+    # tag, fraction done (0..1, or -1 when unknown), short status text
+    progress = Signal(str, float, str)
 
     def __init__(self):
         super().__init__()
@@ -79,24 +100,44 @@ class Backend(QObject):
         """Run a slow command in the background; emits finished(tag, ...)."""
         self._spawn(tag, argv, lambda code, out: self.finished.emit(tag, code == 0, out))
 
-    def _spawn(self, tag, argv, on_done, merge=True):
-        """Run argv in the background; on_done(exit code, output) when done."""
+    def _spawn(self, tag, argv, on_done, merge=True, on_line=None):
+        """Run argv in the background; on_done(exit code, output) when done.
+
+        on_line(line), if given, sees each output line as it arrives.
+        """
         if tag in self._procs:
             return
         p = QProcess(self)
         if merge:
             p.setProcessChannelMode(QProcess.MergedChannels)
         self._procs[tag] = p
-        state = {"done": False}
+        state = {"done": False, "out": "", "partial": ""}
+
+        def read():
+            try:
+                chunk = bytes(p.readAllStandardOutput()).decode(errors="replace")
+            except RuntimeError:        # the app is quitting; the process is gone
+                return
+            state["out"] += chunk
+            if on_line:
+                text = state["partial"] + chunk.replace("\r", "\n")
+                *lines, state["partial"] = text.split("\n")
+                for line in lines:
+                    if line.strip():
+                        on_line(line.strip())
 
         def done(code, _status=None):
             if state["done"]:
                 return
             state["done"] = True
-            out = bytes(p.readAllStandardOutput()).decode(errors="replace").strip()
+            read()
             self._procs.pop(tag, None)
-            p.deleteLater()
-            on_done(code, out)
+            try:
+                p.deleteLater()
+                on_done(code, state["out"].strip())
+            except RuntimeError:        # the app is quitting
+                pass
+        p.readyReadStandardOutput.connect(read)
         p.finished.connect(done)
         p.errorOccurred.connect(lambda _e: p.state() == QProcess.NotRunning and done(127))
         p.start(argv[0], argv[1:])
@@ -301,7 +342,7 @@ class Backend(QObject):
     def updateInfo(self):
         code, out = sh(["rpm-ostree", "status", "--json"], timeout=20)
         info = {"ok": False, "version": "", "staged": False, "stagedVersion": "",
-                "rollback": False, "source": "", "connected": False, "image": self._image_name()}
+                "rollback": False, "rollbackVersion": "", "source": "", "connected": False, "image": self._image_name()}
         if code != 0:
             return info
         try:
@@ -310,13 +351,15 @@ class Backend(QObject):
             return info
         booted = next((d for d in deps if d.get("booted")), {})
         staged = next((d for d in deps if d.get("staged")), None)
+        previous = next((d for d in deps if not d.get("booted") and not d.get("staged")), None)
         ref = booted.get("container-image-reference", "")
         info.update(
             ok=True,
             version=booted.get("version", ""),
             staged=staged is not None,
             stagedVersion=(staged or {}).get("version", ""),
-            rollback=any(not d.get("booted") and not d.get("staged") for d in deps),
+            rollback=previous is not None,
+            rollbackVersion=(previous or {}).get("version", ""),
             source=self._registry_ref(ref),
             connected=UPDATE_REGISTRY in ref,
         )
@@ -357,6 +400,8 @@ class Backend(QObject):
 
     def _check_done(self, code, out):
         parts = out.strip().split("|")
+        if code == 0:
+            self._remember_check()
         if code != 0 or len(parts) < 2 or not parts[0].startswith("sha256:"):
             self.finished.emit("check", False,
                                "Couldn't reach the update server. Check your internet connection.")
@@ -382,7 +427,89 @@ class Backend(QObject):
 
     @Slot()
     def installUpdates(self):
-        self.run("install", ["rpm-ostree", "upgrade"])
+        """Download and stage the new version, reporting progress as it goes.
+
+        rpm-ostree prints how much it needs ("layers needed: 4 (1.2 GB)") and
+        one line per piece it fetches ("Fetching ... (38 MB)"); progress is
+        the share of those bytes fetched so far.
+        """
+        need = {"total": 0.0, "done": 0.0, "pending": 0.0}
+        self.progress.emit("install", -1, "Preparing…")
+
+        def line(text):
+            m = re.search(r"layers needed: \d+ \(([\d.]+\s*\w+)\)", text)
+            if m:
+                need["total"] += size_bytes(m.group(1))
+            elif text.startswith("Fetching"):
+                # A piece counts as fetched once the next one starts (or at
+                # once, if the line already ends in "done").
+                m = re.search(r"\(([\d.]+\s*\w+)\)", text)
+                need["done"] += need["pending"]
+                need["pending"] = size_bytes(m.group(1)) if m else 0.0
+                if text.endswith("done"):
+                    need["done"] += need["pending"]
+                    need["pending"] = 0.0
+            elif text.startswith("Staging deployment"):
+                self.progress.emit("install", 1.0, "Installing…")
+                return
+            else:
+                return
+            if need["total"] > 0:
+                frac = min(need["done"] / need["total"], 1.0)
+                self.progress.emit("install", frac,
+                                   f"Downloading… {human(need['done'])} of {human(need['total'])}")
+        self._spawn("install", ["rpm-ostree", "upgrade"],
+                    lambda code, out: self.finished.emit("install", code == 0, out), on_line=line)
+
+    @Slot(result=bool)
+    def transactionRunning(self):
+        """Whether rpm-ostree is busy right now (e.g. the daily background update)."""
+        code, out = sh(["rpm-ostree", "status", "--json"], timeout=20)
+        try:
+            return code == 0 and bool(json.loads(out).get("transaction"))
+        except ValueError:
+            return False
+
+    @Slot(result=bool)
+    def autoUpdates(self):
+        """Whether Verta downloads new versions by itself (rpm-ostreed-automatic)."""
+        try:
+            text = Path("/etc/rpm-ostreed.conf").read_text()
+        except OSError:
+            return False
+        m = re.search(r"^\s*AutomaticUpdatePolicy\s*=\s*(\w+)", text, re.M)
+        return bool(m) and m.group(1) in ("stage", "apply")
+
+    @Slot(bool)
+    def setAutoUpdates(self, on):
+        policy = "stage" if on else "none"
+        conf = "/etc/rpm-ostreed.conf"
+        script = (f"if grep -q '^AutomaticUpdatePolicy=' {conf}; then "
+                  f"sed -i 's/^AutomaticUpdatePolicy=.*/AutomaticUpdatePolicy={policy}/' {conf}; "
+                  f"else printf '\\n[Daemon]\\nAutomaticUpdatePolicy={policy}\\n' >> {conf}; fi; "
+                  "rpm-ostree reload")
+        self.run("autoupdates", ["pkexec", "sh", "-c", script])
+
+    @Slot(result=float)
+    def lastChecked(self):
+        """When updates were last looked for (Settings or the daily check), as a Unix time."""
+        times = []
+        _, out = sh(["systemctl", "show", "--timestamp=unix", "--value", "-p",
+                     "ExecMainExitTimestamp", "rpm-ostreed-automatic.service"])
+        if out.startswith("@"):
+            times.append(float(out[1:]))
+        try:
+            times.append(float(json.loads(STATE.read_text()).get("lastChecked", 0)))
+        except (OSError, ValueError):
+            pass
+        return max(times, default=0.0)
+
+    def _remember_check(self):
+        try:
+            STATE.parent.mkdir(parents=True, exist_ok=True)
+            STATE.write_text(json.dumps({"lastChecked": time.time()}))
+        except OSError:
+            pass
 
     @Slot()
     def rollback(self):

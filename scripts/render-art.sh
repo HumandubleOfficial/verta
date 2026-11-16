@@ -78,6 +78,9 @@ for t in Verta Verta-Light; do
 done
 mkdir -p "$ART/aurorae/preview" && cp "$PREV"/*.png "$ART/aurorae/preview/" && rm -rf "$PREV"
 
+### Verta cursors (Mac-like pointers: SVG + classic X cursors) ##############
+python3 -I "$ART/cursors/make-cursors.py" "$SF/usr/share/icons"
+
 ### Verta logo in place of distro logos: icon names apps and KDE ask for
 ### (start-here, distributor-logo, ...) and PNG sizes for the files Fedora's
 ### logo package ships (swapped in at build time by 50-branding.sh).

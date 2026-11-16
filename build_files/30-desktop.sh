@@ -106,12 +106,24 @@ kset kwinrc Plugins fadingpopupsEnabled false
 test -f /usr/share/kwin/effects/verta_minimize/contents/code/main.js
 kset kwinrc Plugins verta_minimizeEnabled true
 kset kwinrc Plugins squashEnabled false
+# Verta Resize: maximise / restore morphs smoothly (verta_resize).
+test -f /usr/share/kwin/effects/verta_resize/contents/code/main.js
+kset kwinrc Plugins verta_resizeEnabled true
+kset kwinrc Plugins maximizeEnabled false
 kset kwinrc Plugins magiclampEnabled false
 kset kwinrc Plugins wobblywindowsEnabled false
 kset kwinrc Plugins dimscreenEnabled true      # dim behind password prompts
 # Start menu and tray popups slide out of the taskbar a little faster.
 kset kwinrc Effect-slidingpopups SlideInTime 170
 kset kwinrc Effect-slidingpopups SlideOutTime 130
+# Launching an app: its icon bounces beside the pointer and its taskbar
+# button pulses until the window appears (like a dock), for up to 8 s.
+kset klaunchrc BusyCursorSettings Bouncing true
+kset klaunchrc BusyCursorSettings Blinking false
+kset klaunchrc BusyCursorSettings Timeout 8
+kset klaunchrc FeedbackStyle BusyCursor true
+kset klaunchrc FeedbackStyle TaskbarButton true
+kset klaunchrc TaskbarButtonSettings Timeout 8
 
 ### Glass: frosted blur behind panels, menus, popups and the terminal ########
 kset kwinrc Plugins blurEnabled true
@@ -207,3 +219,19 @@ cat > "$KDE_XDG/kicker-extra-favoritesrc" <<'PINS'
 Prepend=preferred://browser;org.kde.dolphin.desktop;steam.desktop;com.heroicgameslauncher.hgl.desktop;net.lutris.Lutris.desktop;com.usebottles.bottles.desktop;org.kde.discover.desktop;org.verta.Settings.desktop;org.kde.konsole.desktop;org.kde.kate.desktop;org.kde.spectacle.desktop;org.kde.plasma-systemmonitor.desktop
 IgnoreDefaults=true
 PINS
+
+### Pointer: Verta cursors (art/cursors/make-cursors.py) ####################
+# The generator ships the drawn cursors plus a list of the other standard
+# names; they become links here (a Windows checkout can't hold symlinks).
+C=/usr/share/icons/verta-cursors
+test -f "$C/cursors/default"
+test -f "$C/cursors_scalable/default/default.svg"
+while read -r name target; do
+    [ -n "$name" ] || continue
+    [ -e "$C/cursors/$name" ] || ln -s "$target" "$C/cursors/$name"
+    [ -e "$C/cursors_scalable/$name" ] || ln -s "$target" "$C/cursors_scalable/$name"
+done < "$C/aliases.txt"
+rm "$C/aliases.txt"
+kset kcminputrc Mouse cursorTheme verta-cursors
+# Apps that don't read KDE's settings (some X11 games, Flatpaks) use "default".
+printf '[Icon Theme]\nInherits=verta-cursors\n' > /usr/share/icons/default/index.theme

@@ -1,0 +1,43 @@
+#!/usr/bin/bash
+# Tell the person at the desktop that a Verta update is downloaded and only
+# needs a restart. Started by verta-update-notify.path (a user unit) as soon as
+# a new version is staged, whether Verta's daily background update or
+# Settings -> Updates downloaded it.
+#
+#   Restart now   restarts the PC
+#   Later         dismisses it (it comes back at the next login if still pending)
+#   (click)       opens Settings -> Updates
+set -u
+
+# Wait for the desktop's notification service (at login it can be a moment).
+for _ in $(seq 60); do
+    gdbus call --session --dest org.freedesktop.DBus --object-path /org/freedesktop/DBus \
+        --method org.freedesktop.DBus.NameHasOwner org.freedesktop.Notifications 2>/dev/null \
+        | grep -q true && break
+    sleep 2
+done
+# Don't pounce the instant someone logs in.
+sleep 20
+
+version="$(rpm-ostree status --json 2>/dev/null | python3 -c '
+import json, sys
+try:
+    deps = json.load(sys.stdin).get("deployments", [])
+except ValueError:
+    deps = []
+staged = [d for d in deps if d.get("staged")]
+print(staged[0].get("version") or "A new version" if staged else "")
+')"
+# Nothing staged any more (e.g. the update was cancelled): stay quiet.
+[ -n "$version" ] || exit 0
+case "$version" in [0-9]*) title="Verta $version is ready" ;; *) title="A Verta update is ready" ;; esac
+
+action="$(notify-send --app-name=Verta --icon=system-software-update --urgency=normal \
+    --action=restart="Restart now" --action=later="Later" --action=default="Open Updates" \
+    --wait "$title" "Restart to finish updating. Your apps, games and files stay just as they are.")"
+
+case "$action" in
+    restart) systemctl reboot ;;
+    default) setsid verta-settings --page updates >/dev/null 2>&1 & ;;
+esac
+exit 0

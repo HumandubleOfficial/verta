@@ -15,7 +15,7 @@ name=verta
 Image=Verta
 
 [kcminputrc][Mouse]
-cursorTheme=breeze_cursors
+cursorTheme=verta-cursors
 
 [kwinrc][org.kde.kdecoration2]
 library=org.kde.kwin.aurorae

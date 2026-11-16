@@ -37,7 +37,7 @@ class VertaMotion {
         // animationTime() applies the global animation speed (Settings ->
         // Appearance -> Animation speed).
         this.windowIn = animationTime(effect.readConfig("WindowInDuration", 280));
-        this.windowOut = animationTime(effect.readConfig("WindowOutDuration", 170));
+        this.windowOut = animationTime(effect.readConfig("WindowOutDuration", 200));
         this.popupIn = animationTime(effect.readConfig("PopupInDuration", 150));
         this.popupOut = animationTime(effect.readConfig("PopupOutDuration", 110));
     }
@@ -138,11 +138,13 @@ class VertaMotion {
         let animations;
         let duration;
         if (kind === "window") {
+            // Closing: shrinks back and fades, starting at once (no slow
+            // wind-up), so the window feels like it gets put away.
             duration = this.windowOut;
             animations = [
-                { type: Effect.Scale, to: 0.94 },
-                { type: Effect.Translation, to: { value1: 0, value2: 12 } },
-                { type: Effect.Opacity, to: 0 },
+                { type: Effect.Scale, to: 0.86, curve: QEasingCurve.OutQuart },
+                { type: Effect.Translation, to: { value1: 0, value2: 10 }, curve: QEasingCurve.OutQuart },
+                { type: Effect.Opacity, to: 0, curve: QEasingCurve.OutCubic },
             ];
         } else if (kind === "popup") {
             duration = this.popupOut;
