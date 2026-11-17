@@ -63,7 +63,7 @@ class Sheet:
         self.parts.append(s)
 
     def frame(self, prefix, r, fill, rim=None, cw=None, ch=None, dash=None, hints=None, stretch=False,
-              lit=0, sheen=0, compose=False):
+              lit=0, sheen=0, compose=False, frost=0):
         """A rounded frame.
 
         r      corner radius;  cw/ch  corner piece size (>= r), i.e. border sizes
@@ -78,6 +78,8 @@ class Sheet:
         lit    opacity of a white highlight just inside the top edge that fades
                down the rounded corners;  sheen  opacity of a soft white glow
                over the top of the frame
+        frost  opacity of a white layer over the body: milky, frosted glass
+               that stands out from the wallpaper instead of darkening it
         """
         cw = cw or r
         ch = ch or r
@@ -160,7 +162,8 @@ class Sheet:
              f'<rect width="{E}" height="{ch}" {fb}/>' + rim_rect(0, ch - 1, E, 1) + dash_body("bottom"))
         cell("left", 0, ch, cw, E, f'<rect width="{cw}" height="{E}" {fb}/>' + rim_rect(0, 0, 1, E))
         cell("right", cw + E, ch, cw, E, f'<rect width="{cw}" height="{E}" {fb}/>' + rim_rect(cw - 1, 0, 1, E))
-        cell("center", cw, ch, E, E, f'<rect width="{E}" height="{E}" {f}/>')
+        frosting = f'<rect width="{E}" height="{E}" fill="#fff" fill-opacity="{frost}"/>' if frost else ""
+        cell("center", cw, ch, E, E, f'<rect width="{E}" height="{E}" {f}/>' + frosting)
 
         if hints:
             t, rt, b, lf = hints
@@ -220,14 +223,14 @@ class Sheet:
                      f'<defs>{STYLE}{"".join(self.defs)}</defs>{"".join(self.parts)}</svg>\n')
 
 
-def glass(path, r, alpha, hints, shadow=None, rim_alpha=0.10, lit=0.0, sheen=0.0):
+def glass(path, r, alpha, hints, shadow=None, rim_alpha=0.10, lit=0.0, sheen=0.0, frost=0.0):
     """Translucent rounded background + matching blur mask (+ shadow).
     The rim is white in Dark and Light alike: glass edges catch the light."""
     sh = Sheet()
     # One seamless body (compose): the tint is a single stretched piece cut
     # to the rounded shape by the mask; the edge pieces only add the hairline.
     sh.frame("", r, ("Background", alpha), rim=("white", rim_alpha), hints=hints, lit=lit, sheen=sheen,
-             stretch=True, compose=True)
+             stretch=True, compose=True, frost=frost)
     sh.frame("mask", r, ("black", 1))
     if shadow:
         sh.shadow(*shadow)
@@ -276,18 +279,20 @@ def main():
     # Liquid glass. Plasma uses the translucent/ copies while a blur effect
     # (Verta's Glass) runs, and the plain files without one; both are the same
     # glass. solid/ is for a panel set to "opaque".
-    # Menu bar, dock and taskbar: clear glass with a bright lit top edge.
+    # Menu bar, dock and taskbar: clear, lightly frosted glass (a thin milky
+    # layer, like Apple's, so the dock reads as glass over the wallpaper
+    # rather than a darker patch of it) with a bright lit top edge.
     # Popups a little more tinted so text stays easy to read.
     # One fine hairline.
-    panel = dict(rim_alpha=0.09, lit=0.22)
-    dialog = dict(rim_alpha=0.09, lit=0.20)
-    tooltip = dict(rim_alpha=0.08, lit=0.16)
+    panel = dict(rim_alpha=0.12, lit=0.34, frost=0.11)
+    dialog = dict(rim_alpha=0.10, lit=0.24, frost=0.04)
+    tooltip = dict(rim_alpha=0.09, lit=0.18, frost=0.03)
     for variant in ("", "translucent/"):
         # No drop shadows on glass: KWin also draws them beneath a translucent
         # window, where they showed through as a line across the middle of the
         # dock and a dark band inside every popup. The rim and the glass edge
         # already set them off the wallpaper.
-        glass(f"{variant}widgets/panel-background.svg", 18, 0.28, (4, 8, 4, 8), None, **panel)
+        glass(f"{variant}widgets/panel-background.svg", 18, 0.22, (4, 8, 4, 8), None, **panel)
         glass(f"{variant}dialogs/background.svg", 16, 0.56, (8, 8, 8, 8), None, **dialog)
         # Every popup (Start menu, Control Center, calendar, tray) is first
         # created with "widgets/background" and only then switched to

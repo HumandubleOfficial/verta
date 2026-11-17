@@ -39,6 +39,8 @@ PlasmoidItem {
     readonly property real thickness: vertical ? width : height
     readonly property int iconSize: Math.max(16, Math.round(thickness * (taskbar ? 0.64 : 0.82)))
     readonly property int cellSize: Math.max(20, Math.round(thickness * (taskbar ? 0.96 : 0.88)))
+    // Dock: a thin divider after the apps sets the Trash apart, like macOS.
+    readonly property int dividerSpace: taskbar ? 0 : Math.round(cellSize * 0.4)
 
     // Where the pointer is along the row (-1: not over the dock), for the
     // magnifying effect, and the app being dragged to a new place.
@@ -150,7 +152,8 @@ PlasmoidItem {
     fullRepresentation: Item {
         id: rep
 
-        readonly property real length: list.count * dock.cellSize
+        readonly property real appsLength: list.count * dock.cellSize
+        readonly property real length: appsLength + (list.count > 0 ? dock.dividerSpace : 0)
         Layout.minimumWidth: dock.vertical ? -1 : length
         Layout.preferredWidth: dock.vertical ? -1 : length
         Layout.maximumWidth: dock.vertical ? -1 : length
@@ -160,9 +163,20 @@ PlasmoidItem {
         Layout.fillWidth: false
         Layout.fillHeight: false
 
+        Rectangle {
+            visible: dock.dividerSpace > 0 && list.count > 0
+            width: dock.vertical ? Math.round(dock.thickness * 0.5) : 1
+            height: dock.vertical ? 1 : Math.round(dock.thickness * 0.5)
+            x: dock.vertical ? Math.round((parent.width - width) / 2) : rep.appsLength + Math.round(dock.dividerSpace / 2)
+            y: dock.vertical ? rep.appsLength + Math.round(dock.dividerSpace / 2) : Math.round((parent.height - height) / 2)
+            color: Kirigami.Theme.textColor
+            opacity: 0.25
+        }
+
         ListView {
             id: list
-            anchors.fill: parent
+            width: dock.vertical ? parent.width : rep.appsLength
+            height: dock.vertical ? rep.appsLength : parent.height
             orientation: dock.vertical ? ListView.Vertical : ListView.Horizontal
             interactive: false
             boundsBehavior: Flickable.StopAtBounds

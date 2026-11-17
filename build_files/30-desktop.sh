@@ -198,8 +198,8 @@ GL DockNoiseStrength 0
 GL Saturation 1.5                   # vibrancy: colours behind the glass glow
 GL OklabSaturation true
 GL PhysicallyBasedRefraction true   # lensing at the edges
-GL RefractionStrength 10            # 0-20
-GL RefractionEdgeSize 1             # x10 px: a narrow lens rim, like Apple's
+GL RefractionStrength 12            # 0-20
+GL RefractionEdgeSize 2             # x10 px: the lens rim where the picture visibly bends, like Apple's
 GL RefractionRGBFringing 2          # 0-20: faint rainbow at the very edge
 GL RefractionExcludeWindows true    # like Apple: glass is for controls (bars, dock, menus,
                                     # popups), app windows and Launchpad stay undistorted
