@@ -1,7 +1,7 @@
 [Desktop Entry]
 Name=Verta Light
-Comment=Verta's light window title bar with coloured button dots
+Comment=Verta's light title bar, Windows 11 style
 X-KDE-PluginInfo-Name=Verta-Light
 X-KDE-PluginInfo-Author=Verta
 X-KDE-PluginInfo-License=GPL-2.0-or-later
-X-KDE-PluginInfo-Version=1.1
+X-KDE-PluginInfo-Version=2.0

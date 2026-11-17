@@ -24,7 +24,6 @@ from PySide6.QtWidgets import QApplication
 
 HERE = Path(__file__).resolve().parent
 UPDATE_REGISTRY = "ghcr.io/humandubleofficial"
-LAYOUTS = Path("/usr/share/verta/layouts")     # dock.js, taskbar.js (Plasma scripts)
 CONFIG = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config"))
 STATE = Path(os.environ.get("XDG_STATE_HOME", Path.home() / ".local/state")) / "verta-settings/updates.json"
 UNITS = {"b": 1, "byte": 1, "bytes": 1, "kb": 1e3, "mb": 1e6, "gb": 1e9, "tb": 1e12,
@@ -222,51 +221,6 @@ class Backend(QObject):
     @Slot(str)
     def setWallpaper(self, path):
         self.run("wallpaper", ["plasma-apply-wallpaperimage", path])
-
-    @Slot(result=str)
-    def desktopLayout(self):
-        """'dock' (menu bar + dock) or 'taskbar' (one bar at the bottom)."""
-        f = CONFIG / "plasma-org.kde.plasma.desktop-appletsrc"
-        try:
-            text = f.read_text(errors="replace")
-        except OSError:
-            return "dock"
-        if "plugin=org.verta.menu" in text:
-            return "dock"
-        return "taskbar" if "plugin=org.verta.start" in text else "dock"
-
-    @Slot(str)
-    def setDesktopLayout(self, name):
-        if name not in ("dock", "taskbar") or getattr(self, "_switching", False):
-            return
-        try:
-            body = (LAYOUTS / f"{name}.js").read_text()
-        except OSError:
-            return
-        shell = ["qdbus-qt6", "org.kde.plasmashell", "/PlasmaShell", "org.kde.PlasmaShell.evaluateScript"]
-        # Apps' menus: in the menu bar (Dock) or back in their windows
-        # (Taskbar). The menu service is up before the menu bar that uses it.
-        if name == "dock":
-            sh(["qdbus-qt6", "org.kde.kded6", "/kded", "org.kde.kded6.loadModule", "appmenu"])
-        # Swap the panels in two steps: take the old ones away, and build the
-        # new ones once Plasma has finished tearing those down. Doing both in
-        # one go had Plasma build a bar while the old one was still being
-        # destroyed, which could crash it (seen going from Taskbar to Dock).
-        sh(shell + ["panels().forEach(function (p) { p.remove(); });"])
-
-        self._switching = True
-
-        def build():
-            self._switching = False
-            self.run("layout", shell + [body])
-            if name == "taskbar":
-                sh(["qdbus-qt6", "org.kde.kded6", "/kded", "org.kde.kded6.unloadModule", "appmenu"])
-            # Window buttons: on the left with the Dock, on the right with the Taskbar.
-            kwrite("kwinrc", "org.kde.kdecoration2", "ButtonsOnLeft", "XIA" if name == "dock" else "")
-            kwrite("kwinrc", "org.kde.kdecoration2", "ButtonsOnRight", "" if name == "dock" else "IAX")
-            kwin_reconfigure()
-
-        QTimer.singleShot(1500, build)
 
     @Slot(result=float)
     def animationSpeed(self):

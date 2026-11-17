@@ -5,11 +5,10 @@ Plasma draws panels and popups from "frame" SVGs: nine named pieces (four
 corners, four edges, centre) per state, stretched to size. This script draws
 those pieces from a few parameters so the whole style stays consistent:
 
-  * liquid glass menu bar, dock, taskbar and popups: clear, only lightly
-    tinted glass with a white hairline rim, a bright lit top edge and a soft
-    sheen (light falling on glass from above), a soft shadow and a mask that
-    follows the rounded corners. The Glass KWin effect (build_files/25-glass.sh)
-    does the rest behind them: blur, lensing at the edges, glints on the rim.
+  * acrylic popups, menus and tooltips (Windows 11 style): a frosted tint
+    with a thin outline over the blur the Glass KWin effect
+    (build_files/25-glass.sh) draws behind them. The taskbar and Start menu
+    themselves are Verta Shell, not Plasma panels.
   * task buttons like Windows 11: a short dash under running apps, a longer
     accent-coloured dash under the active one, a soft rounded pill on hover
   * rounded hover/selection pills in menus and lists (Start menu, tray, ...)
@@ -285,23 +284,23 @@ def main():
     # Popups a little more tinted so text stays easy to read.
     # One fine hairline.
     panel = dict(rim_alpha=0.12, lit=0.34, frost=0.11)
-    dialog = dict(rim_alpha=0.10, lit=0.24, frost=0.04)
-    tooltip = dict(rim_alpha=0.09, lit=0.18, frost=0.03)
+    dialog = dict(rim_alpha=0.10, lit=0.05)
+    tooltip = dict(rim_alpha=0.09, lit=0.04)
     for variant in ("", "translucent/"):
         # No drop shadows on glass: KWin also draws them beneath a translucent
         # window, where they showed through as a line across the middle of the
         # dock and a dark band inside every popup. The rim and the glass edge
         # already set them off the wallpaper.
         glass(f"{variant}widgets/panel-background.svg", 18, 0.22, (4, 8, 4, 8), None, **panel)
-        glass(f"{variant}dialogs/background.svg", 16, 0.56, (8, 8, 8, 8), None, **dialog)
+        glass(f"{variant}dialogs/background.svg", 8, 0.70, (8, 8, 8, 8), None, **dialog)
         # Every popup (Start menu, Control Center, calendar, tray) is first
         # created with "widgets/background" and only then switched to
         # "dialogs/background", and KSvg keeps deciding how to paint it from
         # the first one. Without this file that was Breeze's, which can't
         # spread the glass under the rounded edge: the edge stayed clear and
         # the middle tinted, a hard rectangle inside every popup.
-        glass(f"{variant}widgets/background.svg", 16, 0.56, (8, 8, 8, 8), None, **dialog)
-        glass(f"{variant}widgets/tooltip.svg", 16, 0.66, (6, 8, 6, 8), None, **tooltip)
+        glass(f"{variant}widgets/background.svg", 8, 0.70, (8, 8, 8, 8), None, **dialog)
+        glass(f"{variant}widgets/tooltip.svg", 6, 0.80, (6, 8, 6, 8), None, **tooltip)
     glass("solid/widgets/panel-background.svg", 18, 0.98, (4, 8, 4, 8), (26, 0.30), lit=0.10)
     tasks("widgets/tasks.svg")
     viewitem("widgets/viewitem.svg")
@@ -309,7 +308,7 @@ def main():
     meta = {
         "KPlugin": {
             "Authors": [{"Name": "Verta"}],
-            "Description": "Verta liquid glass: clear, lit glass for the menu bar, dock, taskbar and popups",
+            "Description": "Verta acrylic: frosted popups, menus and tooltips",
             "Id": "verta",
             "Name": "Verta",
             "Version": "2.0",

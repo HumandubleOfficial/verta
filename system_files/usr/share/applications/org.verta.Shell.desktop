@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Verta Shell
+Comment=Taskbar, Start menu and desktop
+Exec=/usr/bin/verta-shell
+Icon=verta-logo
+NoDisplay=true
+OnlyShowIn=KDE;
+# Lets the taskbar list, switch, minimise and close windows (KWin only allows
+# this for programs whose .desktop file asks for it).
+X-KDE-Wayland-Interfaces=org_kde_plasma_window_management,org_kde_kwin_keystate,org_kde_plasma_activation_feedback

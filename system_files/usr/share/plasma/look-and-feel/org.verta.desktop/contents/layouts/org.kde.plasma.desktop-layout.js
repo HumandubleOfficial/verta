@@ -1,7 +1,6 @@
-// Verta default desktop. At build time (30-desktop.sh) the Dock layout
-// (/usr/share/verta/layouts/dock.js: menu bar on top, dock at the bottom) is
-// put in front of this; this part sets the wallpaper. Used for every new user
-// (and copied into the Verta Light theme).
+// Verta default desktop: just the wallpaper. Plasma draws no panels; the
+// taskbar and Start menu are Verta Shell (/usr/bin/verta-shell). Used for
+// every new user (and copied into the Verta Light theme).
 
 desktopsForActivity(currentActivity()).forEach(function (desktop) {
     desktop.wallpaperPlugin = "org.kde.image";

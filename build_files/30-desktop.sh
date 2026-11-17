@@ -16,52 +16,29 @@ grep -q '^LookAndFeelPackage=org.verta.desktop' "$KDE_XDG/kdeglobals"
 kset kdeglobals KDE DefaultDarkLookAndFeel  org.verta.desktop
 kset kdeglobals KDE DefaultLightLookAndFeel org.verta.light
 kset kdeglobals Icons Theme Verta
-# Desktop layout for new users: the Dock layout (menu bar on top, dock at the
-# bottom; /usr/share/verta/layouts/dock.js) followed by the wallpaper part.
-# Settings -> Appearance -> Desktop layout switches to taskbar.js and back.
+# Desktop: Verta Shell (/usr/bin/verta-shell, QML in /usr/share/verta-shell)
+# draws the taskbar and Start menu, Windows 11 style. Plasma still draws the
+# wallpaper, desktop icons, notifications and volume/brightness pop-ups, but
+# no panels: the global themes' layout is only the wallpaper part.
 LAF=/usr/share/plasma/look-and-feel
-LAYOUT="$LAF/org.verta.desktop/contents/layouts/org.kde.plasma.desktop-layout.js"
-test -f /usr/share/verta/layouts/dock.js
-test -f /usr/share/verta/layouts/taskbar.js
-test -f /usr/share/plasma/plasmoids/org.verta.menu/contents/ui/main.qml
-test -f /usr/share/plasma/plasmoids/org.verta.controlcenter/contents/ui/main.qml
-{ cat /usr/share/verta/layouts/dock.js; echo; cat "$LAYOUT"; } > "$LAYOUT.new"
-mv "$LAYOUT.new" "$LAYOUT"
-# People who already use Verta switch to the Dock layout once (Plasma runs each
-# script in updates/ once per user); anyone who already has it is left alone.
-UPD=/usr/share/plasma/shells/org.kde.plasma.desktop/contents/updates/verta-dock-layout.js
-{
-    echo '// Once per user: switch to the Dock layout (menu bar + dock).'
-    echo 'var hasDock = panels().some(function (p) { return p.widgets("org.verta.menu").length > 0; });'
-    echo 'if (!hasDock) {'
-    echo 'panels().forEach(function (p) { p.remove(); });'
-    cat /usr/share/verta/layouts/dock.js
-    echo '}'
-} > "$UPD"
-# Verta Dock (org.verta.dock) replaces Plasma's task manager in the dock and the
-# taskbar: once per user, the panels are rebuilt in the layout they already use,
-# keeping their pinned apps.
-test -f /usr/share/plasma/plasmoids/org.verta.dock/contents/ui/main.qml
-{
-    echo '// Once per user: Verta Dock replaces the old task manager; pinned apps stay.'
-    echo 'var oldTasks = [];'
-    echo 'panels().forEach(function (p) { oldTasks = oldTasks.concat(p.widgets("org.kde.plasma.icontasks")); });'
-    echo 'if (oldTasks.length > 0) {'
-    echo 'oldTasks[0].currentConfigGroup = ["General"];'
-    echo 'var keptLaunchers = oldTasks[0].readConfig("launchers", "");'
-    echo 'var wasDock = panels().some(function (p) { return p.widgets("org.verta.menu").length > 0; });'
-    echo 'panels().forEach(function (p) { p.remove(); });'
-    echo 'if (wasDock) {'
-    cat /usr/share/verta/layouts/dock.js
-    echo '} else {'
-    cat /usr/share/verta/layouts/taskbar.js
-    echo '}'
-    echo 'if (keptLaunchers && keptLaunchers.length > 0) {'
-    echo 'tasks.currentConfigGroup = ["General"];'
-    echo 'tasks.writeConfig("launchers", keptLaunchers);'
-    echo '}'
-    echo '}'
-} > "${UPD%/*}/verta-dock-widget.js"
+test -x /usr/bin/verta-shell
+test -f /usr/share/verta-shell/qml/Taskbar.qml
+test -f /usr/lib/systemd/user/verta-shell.service
+systemctl --global enable verta-shell.service
+# People who already use Verta: their Plasma panels (menu bar and dock, or
+# taskbar) go, once (Plasma runs each script in updates/ once per user).
+UPD=/usr/share/plasma/shells/org.kde.plasma.desktop/contents/updates
+cat > "$UPD/verta-shell-panels.js" <<'JS'
+// Once per user: Verta Shell draws the taskbar now; Plasma's panels go.
+panels().forEach(function (p) { p.remove(); });
+JS
+# The Windows key on its own opens Start (Plasma's default opened its own
+# launcher).
+kset kwinrc ModifierOnlyShortcuts Meta "org.verta.Shell,/Shell,org.verta.Shell,toggleStart"
+# No global menu bar any more: apps show their own menus again.
+kset kded6rc Module-appmenu autoload false
+# Notifications pop up in the bottom-right corner, above the taskbar.
+kset plasmanotifyrc Notifications PopupPosition BottomRight
 # Verta Light shares the desktop layout and login splash with Verta Dark.
 cp -r "$LAF/org.verta.desktop/contents/layouts" "$LAF/org.verta.light/contents/"
 cp -r "$LAF/org.verta.desktop/contents/splash"  "$LAF/org.verta.light/contents/"
@@ -81,7 +58,7 @@ test -f /usr/share/plasma/desktoptheme/verta/widgets/tasks.svg
 test -f /usr/lib64/qt6/plugins/styles/darkly6.so
 kset kdeglobals KDE widgetStyle Darkly
 DK() { kset darklyrc "$1" "$2" "$3"; }
-DK Style CornerRadius 10                    # rounder buttons, fields and menus
+DK Style CornerRadius 6                     # Windows 11: softly rounded buttons, fields and menus
 DK Style MenuOpacity 82                     # frosted glass menus (blurred by KWin)
 DK Style MenuItemHeight 30                  # roomier, Apple-like menu rows
 DK Style AnimationsEnabled true
@@ -102,16 +79,15 @@ rm -rf /usr/share/plasma/desktoptheme/darkly /usr/share/color-schemes/Darkly.col
 kset breezerc Style AnimationsEnabled true
 kset breezerc Style AnimationsDuration 150
 
-### Window title bars: Verta's own, with coloured button dots ################
+### Window title bars: Verta's own, Windows 11 style ##########################
 # Generated by art/aurorae/make-aurorae.py; Verta Light uses "Verta-Light".
 test -f /usr/share/aurorae/themes/Verta/close.svg
 test -f /usr/share/aurorae/themes/Verta-Light/close.svg
 kset kwinrc org.kde.kdecoration2 library org.kde.kwin.aurorae
 kset kwinrc org.kde.kdecoration2 theme __aurorae__svg__Verta
-# Close, minimise, maximise on the left, like the menu bar above them (the
-# Taskbar layout in Settings puts them back on the right).
-kset kwinrc org.kde.kdecoration2 ButtonsOnLeft XIA
-kset kwinrc org.kde.kdecoration2 ButtonsOnRight ""
+# App icon on the left; minimise, maximise and close on the right, like Windows.
+kset kwinrc org.kde.kdecoration2 ButtonsOnLeft M
+kset kwinrc org.kde.kdecoration2 ButtonsOnRight IAX
 # Hovering an app in the taskbar spotlights its windows (others fade back).
 kset kwinrc Plugins highlightwindowEnabled true
 
@@ -145,9 +121,6 @@ ln -sf /usr/share/fontconfig/conf.avail/45-verta-fonts.conf /etc/fonts/conf.d/45
 ### Animations: smooth but quick ############################################
 # 0.75 = every animation 25% shorter than stock Plasma.
 kset kdeglobals KDE AnimationDurationFactor 0.75
-# No bouncing busy cursor while an app starts: its icon bounces in the dock
-# or hops in the taskbar instead (that comes from TaskbarButton, kept on).
-kset klaunchrc FeedbackStyle BusyCursor false
 # Verta Motion (our own effect, /usr/share/kwin/effects/verta_motion) animates
 # windows, menus and tooltips; KDE's stock open/close effects are switched off.
 test -f /usr/share/kwin/effects/verta_motion/contents/code/main.js
@@ -179,48 +152,38 @@ kset klaunchrc FeedbackStyle BusyCursor true
 kset klaunchrc FeedbackStyle TaskbarButton true
 kset klaunchrc TaskbarButtonSettings Timeout 8
 
-### Liquid glass behind the menu bar, dock, menus, popups and the terminal ###
-# The Glass effect (built in 25-glass.sh) replaces Plasma's blur and contrast:
-# the picture behind bends at the rounded edges like light through a lens
-# (Snell's law, with a hint of colour fringing), the rim lights up, a bright
-# glint sits on the top-left and bottom-right corners, and colours behind stay
-# vivid. Less blur than frosted glass, so the dock reads as clear glass.
+### Acrylic behind the taskbar, Start menu, menus, popups and the terminal ###
+# Windows 11-style acrylic: a strong, even blur with a fine grain, tinted by
+# the surface on top. Drawn by the Glass effect (built in 25-glass.sh, which
+# replaces Plasma's blur and contrast) with its lens and rim effects off.
 test -f /usr/lib64/qt6/plugins/kwin/effects/plugins/glass.so
 kset kwinrc Plugins blurEnabled false
 kset kwinrc Plugins contrastEnabled false
 kset kwinrc Plugins glassEnabled true
 GL() { kset kwinrc Effect-blurplus "$1" "$2"; }
-GL BlurStrength 6                   # 1-15: windows (terminal), popups, menus
-GL DecorationBlurStrength 6
-GL DockBlurStrength 4               # menu bar and dock: clearer glass
-GL NoiseStrength 0
-GL DockNoiseStrength 0
-GL Saturation 1.5                   # vibrancy: colours behind the glass glow
+GL BlurStrength 10                  # 1-15: menus, popups, the Start menu, the terminal
+GL DecorationBlurStrength 10
+GL DockBlurStrength 10              # the taskbar
+GL NoiseStrength 2                  # acrylic grain
+GL DockNoiseStrength 2
+GL Saturation 1.3                   # colours behind stay a little lively
 GL OklabSaturation true
-GL PhysicallyBasedRefraction true   # lensing at the edges
-GL RefractionStrength 12            # 0-20
-GL RefractionEdgeSize 2             # x10 px: the lens rim where the picture visibly bends, like Apple's
-GL RefractionRGBFringing 2          # 0-20: faint rainbow at the very edge
-GL RefractionExcludeWindows true    # like Apple: glass is for controls (bars, dock, menus,
-                                    # popups), app windows and Launchpad stay undistorted
-GL EdgeLighting false               # its wide glow band read as a thick outline
-# No extra rim from the effect: it also lined the screen edges along the menu bar.
-# The Plasma style draws the one hairline rim and the lit top edge itself.
+GL PhysicallyBasedRefraction false  # flat acrylic: no lens at the edges
+GL RefractionStrength 0
+GL RefractionEdgeSize 0
+GL RefractionRGBFringing 0
+GL EdgeLighting false
 GL RimSpecular false
-# Glass cuts its own smooth, anti-aliased corners. Plasma hands it the shape as a pixel
-# mask whose edge pixels are cut off at half coverage, so a curve of the same size
-# showed those steps. Each radius is 2 px rounder than the shape drawn on top (Plasma
-# style: panels 18, popups and tooltips 16; Darkly's menus 10; windows 16, below), which
-# puts the smooth curve just inside the mask.
-GL TopCornerRadius 18
-GL BottomCornerRadius 18
-GL MenuCornerRadius 12
-GL DockCornerRadius 20
-# Corners that touch the edge of the screen stay square: the menu bar is one flat bar
-# from edge to edge (the dock, menus, popups and windows keep their round corners).
+# Corners: Windows 11's 8 px; each radius 2 px rounder than the shape drawn on
+# top (the mask's edge pixels are cut at half coverage).
+GL TopCornerRadius 10
+GL BottomCornerRadius 10
+GL MenuCornerRadius 10
+GL DockCornerRadius 10
+# Corners that touch the edge of the screen stay square (the taskbar).
 GL DynamicCorners true
 GL DynamicCornersExcludeDocks false
-GL DynamicCornersExcludeWindows true
+GL DynamicCornersExcludeWindows false     # the taskbar counts as a window here
 GL DynamicCornersExcludeMenus true
 GL DynamicCornersExcludeTooltips true
 
@@ -230,8 +193,8 @@ GL DynamicCornersExcludeTooltips true
 ### (games) are left alone.
 kset kwinrc Plugins kwin4_effect_shapecornersEnabled true
 RC() { kset kwinrc Round-Corners "$1" "$2"; }
-RC Size 16
-RC InactiveCornerRadius 16
+RC Size 8
+RC InactiveCornerRadius 8
 RC DisableRoundMaximize true
 RC DisableOutlineMaximize true
 RC DisableRoundFullScreen true
@@ -306,18 +269,6 @@ hide_app org.kde.drkonqi.coredump.gui.desktop   # developer tools
 hide_app org.kde.kmenuedit.desktop
 hide_app darklystyleconfig.desktop              # style options live in Settings
 hide_app kcm_darklydecoration.desktop
-
-### Start menu: Verta Start (org.verta.start) and its default pinned apps ###
-### (In the Dock layout it opens Launchpad, a full-screen grid of all apps;
-### the pins are used by the Start menu of the Taskbar layout.)
-test -f /usr/share/plasma/plasmoids/org.verta.start/contents/ui/main.qml
-# KDE's launchers read their first-run pins from here (Fedora's list had
-# Kontact, KWrite and System Settings).
-cat > "$KDE_XDG/kicker-extra-favoritesrc" <<'PINS'
-[General]
-Prepend=preferred://browser;org.kde.dolphin.desktop;steam.desktop;com.heroicgameslauncher.hgl.desktop;net.lutris.Lutris.desktop;com.usebottles.bottles.desktop;org.kde.discover.desktop;org.verta.Settings.desktop;org.kde.konsole.desktop;org.kde.kate.desktop;org.kde.spectacle.desktop;org.kde.plasma-systemmonitor.desktop
-IgnoreDefaults=true
-PINS
 
 ### Pointer: Verta cursors (art/cursors/make-cursors.py) ####################
 # The generator ships the drawn cursors plus a list of the other standard

@@ -1,0 +1,18 @@
+[Desktop Entry]
+Type=Application
+Name=Verta Shell
+Comment=The taskbar, Start menu and Quick Settings
+Icon=verta-logo
+NoDisplay=true
+Exec=true
+Actions=QuickSettings;Calendar;
+
+[Desktop Action QuickSettings]
+Name=Open Quick Settings
+Exec=qdbus-qt6 org.verta.Shell /Shell org.verta.Shell.toggleQuickSettings
+X-KDE-Shortcuts=Meta+A
+
+[Desktop Action Calendar]
+Name=Open the calendar
+Exec=qdbus-qt6 org.verta.Shell /Shell org.verta.Shell.toggleCalendar
+X-KDE-Shortcuts=Meta+N

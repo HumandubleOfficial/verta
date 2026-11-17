@@ -150,7 +150,7 @@ rm -f /usr/lib/NetworkManager/conf.d/20-connectivity-fedora.conf
 
 ### App names: what they are, like on any other computer #####################
 # "Files", not "Dolphin"; "Terminal", not "Konsole". Only the name shown in the
-# menus, Launchpad, the dock and the menu bar changes (in every language); the
+# Start menu, the taskbar and window titles changes (in every language); the
 # old name stays a search keyword, so typing "dolphin" still finds Files.
 python3 - <<'PY'
 import re

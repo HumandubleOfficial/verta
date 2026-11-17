@@ -5,10 +5,10 @@
                 "Name": "Verta"
             }
         ],
-        "Description": "Verta's light window title bar with coloured button dots",
+        "Description": "Verta's light title bar, Windows 11 style",
         "Id": "Verta-Light",
         "License": "GPL-2.0-or-later",
         "Name": "Verta Light",
-        "Version": "1.1"
+        "Version": "2.0"
     }
 }
