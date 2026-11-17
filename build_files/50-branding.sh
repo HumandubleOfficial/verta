@@ -148,6 +148,79 @@ rm -f /usr/share/plasma/shells/org.kde.plasma.desktop/contents/updates/00-start-
 test -f /usr/lib/NetworkManager/conf.d/20-verta-connectivity.conf
 rm -f /usr/lib/NetworkManager/conf.d/20-connectivity-fedora.conf
 
+### App names: what they are, like on any other computer #####################
+# "Files", not "Dolphin"; "Terminal", not "Konsole". Only the name shown in the
+# menus, Launchpad, the dock and the menu bar changes (in every language); the
+# old name stays a search keyword, so typing "dolphin" still finds Files.
+python3 - <<'PY'
+import re
+from pathlib import Path
+
+NAMES = {
+    "org.kde.dolphin.desktop": "Files",
+    "org.kde.konsole.desktop": "Terminal",
+    "org.kde.discover.desktop": "App Store",
+    "org.kde.spectacle.desktop": "Screenshot",
+    "org.kde.kate.desktop": "Text Editor",
+    "org.kde.kwrite.desktop": "Simple Text Editor",
+    "org.kde.ark.desktop": "Archive Utility",
+    "org.kde.filelight.desktop": "Disk Usage",
+    "org.kde.partitionmanager.desktop": "Disk Utility",
+    "org.kde.plasma-systemmonitor.desktop": "Activity Monitor",
+    "org.kde.plasma.emojier.desktop": "Emoji & Symbols",
+    "org.kde.gwenview.desktop": "Image Viewer",
+    "org.kde.okular.desktop": "Document Viewer",
+    "org.kde.kcalc.desktop": "Calculator",
+    "org.kde.kwalletmanager.desktop": "Passwords",
+    "org.kde.kwalletmanager5.desktop": "Passwords",
+    "org.kde.haruna.desktop": "Videos",
+    "org.kde.elisa.desktop": "Music",
+    "org.kde.kfind.desktop": "Find Files",
+    "org.kde.khelpcenter.desktop": "Help",
+    "org.kde.kcharselect.desktop": "Characters",
+    "org.kde.skanpage.desktop": "Scanner",
+    "org.kde.kinfocenter.desktop": "System Information",
+    "org.kde.ksystemlog.desktop": "Console",
+    "Waydroid.desktop": "Android Apps",
+}
+
+for file, new in NAMES.items():
+    path = Path("/usr/share/applications") / file
+    if not path.exists():
+        print(f"app names: {file} not installed, skipping")
+        continue
+    lines = path.read_text(encoding="utf-8").splitlines()
+    group, old, out, has_keywords = None, None, [], False
+    for line in lines:
+        if group == "[Desktop Entry]" and line.startswith("Name="):
+            old = line[len("Name="):]
+        if line.startswith("["):
+            group = line.strip()
+    group = None
+    for line in lines:
+        if line.startswith("["):
+            if group == "[Desktop Entry]" and not has_keywords:
+                out.append(f"Keywords={old};")
+            group = line.strip()
+        elif group == "[Desktop Entry]":
+            m = re.match(r"(Name|X-GNOME-FullName)(\[[^]]*\])?=", line)
+            if m:
+                if m.group(1) == "Name" and not m.group(2):
+                    out.append(f"Name={new}")
+                continue                    # localised names would undo it
+            m = re.match(r"Keywords(\[[^]]*\])?=(.*)", line)
+            if m:
+                line = f"Keywords{m.group(1) or ''}={old};{m.group(2)}"
+                has_keywords = has_keywords or not m.group(1)
+        out.append(line)
+    if group == "[Desktop Entry]" and not has_keywords:
+        out.append(f"Keywords={old};")
+    path.write_text("\n".join(out) + "\n", encoding="utf-8")
+    print(f"app names: {old} -> {new}")
+PY
+grep -q '^Name=Files$' /usr/share/applications/org.kde.dolphin.desktop
+grep -q '^Name=Terminal$' /usr/share/applications/org.kde.konsole.desktop
+
 # Nothing a person can see may say Fedora: names and comments of every app,
 # menu entry, Plasma script, search keyword and firewall zone.
 if grep -liE '^(Name|GenericName|Comment|Keywords)(\[[^]]*\])?=.*fedora' /usr/share/applications/*.desktop /usr/share/kf6/searchproviders/*.desktop 2>/dev/null    || grep -rliI fedora /usr/share/plasma /usr/lib/firewalld/zones /etc/xdg 2>/dev/null; then

@@ -7,12 +7,12 @@
             }
         ],
         "Category": "Application Launchers",
-        "Description": "Verta Start: a full-screen grid of all your apps (in the dock), or a menu with pinned apps, recent files and search (in the taskbar)",
+        "Description": "Verta Start: a full-screen grid of all your apps (in the dock), or a menu in the middle of the screen with pinned apps, all apps and search (in the taskbar)",
         "Icon": "verta-logo",
         "Id": "org.verta.start",
         "License": "GPL-2.0-or-later",
         "Name": "Verta Start",
-        "Version": "1.1",
+        "Version": "2.0",
         "Website": "https://github.com/HumandubleOfficial/verta"
     },
     "X-Plasma-API-Minimum-Version": "6.0",

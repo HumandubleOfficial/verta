@@ -1,0 +1,22 @@
+{
+    "KPlugin": {
+        "Authors": [
+            {
+                "Name": "Verta"
+            }
+        ],
+        "Category": "Windows and Tasks",
+        "Description": "Your pinned and open apps: icons that grow under the pointer, bounce while an app starts, and drag onto the desktop",
+        "Icon": "preferences-system-windows",
+        "Id": "org.verta.dock",
+        "License": "GPL-2.0-or-later",
+        "Name": "Verta Dock",
+        "Version": "1.0",
+        "Website": "https://github.com/HumandubleOfficial/verta"
+    },
+    "KPackageStructure": "Plasma/Applet",
+    "X-Plasma-API-Minimum-Version": "6.0",
+    "X-Plasma-Provides": [
+        "org.kde.plasma.multitasking"
+    ]
+}

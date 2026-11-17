@@ -3,8 +3,10 @@
 
     In the dock (Dock layout) it opens Launchpad: every app in a full-screen
     grid over the blurred desktop, with search. On the taskbar (Taskbar
-    layout) it opens the Start menu: pinned apps, recent files, all apps and
-    search in one glass panel. The "launchpad" setting picks which.
+    layout) it opens the Start menu: pinned apps, all apps and search in one
+    glass panel in the middle of the screen. The "launchpad" setting picks
+    which. Either way the button sits in the bar and the menu is a window of
+    its own (Launchpad.qml, StartWindow.qml), made the first time it opens.
 
     Built on the same app, search and favourites back ends as KDE's own
     launchers (org.kde.plasma.private.kicker), so pinned apps, search results
@@ -27,13 +29,15 @@ PlasmoidItem {
     readonly property bool launchpad: Plasmoid.configuration.launchpad
 
     Plasmoid.icon: Plasmoid.configuration.icon || (launchpad ? "verta-launchpad" : "verta-logo")
-    Plasmoid.status: (expanded || (launchpadWindow && launchpadWindow.visible))
+    Plasmoid.status: (menuOpen || (launchpadWindow && launchpadWindow.visible))
         ? PlasmaCore.Types.RequiresAttentionStatus : PlasmaCore.Types.PassiveStatus
-    // Launchpad is its own full-screen window, so Plasma must not open a popup
-    // for it: the button is then the "full" representation, shown in place.
-    preferredRepresentation: launchpad ? fullRepresentation : compactRepresentation
-    hideOnWindowDeactivate: true
-    activationTogglesExpanded: !launchpad
+    // Launchpad and the Start menu are windows of their own, so Plasma must
+    // not open a popup: the button is the "full" representation, shown in place.
+    preferredRepresentation: fullRepresentation
+    activationTogglesExpanded: false
+
+    property bool menuOpen: false        // the Start menu window is showing
+    property double menuClosedAt: 0      // when it last closed (see StartButton)
 
     toolTipMainText: launchpad ? "Apps" : "Start"
     toolTipSubText: ""
@@ -76,12 +80,6 @@ PlasmoidItem {
         onRequestUpdateQuery: query => { start.searchText = query }
     }
 
-    // Recently opened files ("Recent" on the home page).
-    property Kicker.RecentUsageModel recentModel: Kicker.RecentUsageModel {
-        shownItems: Kicker.RecentUsageModel.OnlyDocs
-        ordering: Kicker.RecentUsageModel.Recent
-    }
-
     // Lock, sleep, restart, shut down.
     property Kicker.SystemModel systemModel: Kicker.SystemModel {}
 
@@ -100,37 +98,52 @@ PlasmoidItem {
         id: processRunner
     }
 
-    compactRepresentation: launchpad ? null : buttonComponent
-    fullRepresentation: launchpad ? buttonComponent : menuComponent
+    fullRepresentation: StartButton {}
 
-    Component {
-        id: buttonComponent
-        StartButton {}
-    }
-    Component {
-        id: menuComponent
-        StartMenu {}
-    }
-
-    // Launchpad: made once, the first time it's needed.
+    // Launchpad and the Start menu: each made once, the first time it's needed.
     property var launchpadWindow: null
+    property var menuWindow: null
+    function makeWindow(file) {
+        const c = Qt.createComponent(Qt.resolvedUrl(file))
+        if (c.status !== Component.Ready) {
+            console.warn("Verta Start:", file, "failed to load:", c.errorString())
+            return null
+        }
+        return c.createObject(start)
+    }
     function toggleLaunchpad() {
         if (!launchpadWindow) {
-            const c = Qt.createComponent(Qt.resolvedUrl("Launchpad.qml"))
-            if (c.status !== Component.Ready) {
-                console.warn("Verta Start: Launchpad failed to load:", c.errorString())
-                return
-            }
-            launchpadWindow = c.createObject(start)
+            launchpadWindow = makeWindow("Launchpad.qml")
         }
-        launchpadWindow.toggle()
+        if (launchpadWindow) {
+            launchpadWindow.toggle()
+        }
+    }
+    function toggleMenu() {
+        if (!menuWindow) {
+            menuWindow = makeWindow("StartWindow.qml")
+        }
+        if (menuWindow) {
+            menuWindow.toggle()
+        }
+    }
+    function closeMenu() {
+        if (menuWindow) {
+            menuWindow.close()
+        }
+    }
+    // The button and the Meta (Windows) key.
+    function toggle() {
+        if (launchpad) {
+            toggleLaunchpad()
+        } else {
+            toggleMenu()
+        }
     }
 
-    // The Meta (Windows) key.
     Connections {
         target: Plasmoid
-        enabled: start.launchpad
-        function onActivated() { start.toggleLaunchpad() }
+        function onActivated() { start.toggle() }
     }
 
     // Drag an app from Launchpad onto the dock to keep it there.
@@ -141,17 +154,20 @@ PlasmoidItem {
 
     function launch(model, row) {
         model.trigger(row, "", null)
-        start.expanded = false
+        closeMenu()
         if (launchpadWindow && launchpadWindow.visible) {
             launchpadWindow.toggle()
         }
     }
 
-    onExpandedChanged: isExpanded => {
-        if (!isExpanded) {
-            searchText = ""
-        } else {
-            recentModel.refresh()
+    // A new launcher type or a theme switch rebuilds the button; the menu
+    // window follows the widget and goes with it.
+    Component.onDestruction: {
+        if (menuWindow) {
+            menuWindow.destroy()
+        }
+        if (launchpadWindow) {
+            launchpadWindow.destroy()
         }
     }
 

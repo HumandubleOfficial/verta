@@ -38,6 +38,30 @@ UPD=/usr/share/plasma/shells/org.kde.plasma.desktop/contents/updates/verta-dock-
     cat /usr/share/verta/layouts/dock.js
     echo '}'
 } > "$UPD"
+# Verta Dock (org.verta.dock) replaces Plasma's task manager in the dock and the
+# taskbar: once per user, the panels are rebuilt in the layout they already use,
+# keeping their pinned apps.
+test -f /usr/share/plasma/plasmoids/org.verta.dock/contents/ui/main.qml
+{
+    echo '// Once per user: Verta Dock replaces the old task manager; pinned apps stay.'
+    echo 'var oldTasks = [];'
+    echo 'panels().forEach(function (p) { oldTasks = oldTasks.concat(p.widgets("org.kde.plasma.icontasks")); });'
+    echo 'if (oldTasks.length > 0) {'
+    echo 'oldTasks[0].currentConfigGroup = ["General"];'
+    echo 'var keptLaunchers = oldTasks[0].readConfig("launchers", "");'
+    echo 'var wasDock = panels().some(function (p) { return p.widgets("org.verta.menu").length > 0; });'
+    echo 'panels().forEach(function (p) { p.remove(); });'
+    echo 'if (wasDock) {'
+    cat /usr/share/verta/layouts/dock.js
+    echo '} else {'
+    cat /usr/share/verta/layouts/taskbar.js
+    echo '}'
+    echo 'if (keptLaunchers && keptLaunchers.length > 0) {'
+    echo 'tasks.currentConfigGroup = ["General"];'
+    echo 'tasks.writeConfig("launchers", keptLaunchers);'
+    echo '}'
+    echo '}'
+} > "${UPD%/*}/verta-dock-widget.js"
 # Verta Light shares the desktop layout and login splash with Verta Dark.
 cp -r "$LAF/org.verta.desktop/contents/layouts" "$LAF/org.verta.light/contents/"
 cp -r "$LAF/org.verta.desktop/contents/splash"  "$LAF/org.verta.light/contents/"
@@ -113,10 +137,17 @@ kset kdeglobals General menuFont             "$INTER"
 kset kdeglobals General toolBarFont          'Inter,9,-1,5,400,0,0,0,0,0,0,0,0,0,0,1'
 kset kdeglobals General smallestReadableFont 'Inter,8,-1,5,400,0,0,0,0,0,0,0,0,0,0,1'
 kset kdeglobals WM      activeFont           'Inter,10,-1,5,600,0,0,0,0,0,0,0,0,0,0,1'
+# Inter in every app, not just KDE's: GTK apps, Firefox, the installer, and
+# web pages that ask for the Mac or Windows system font by name.
+test -f /usr/share/fontconfig/conf.avail/45-verta-fonts.conf
+ln -sf /usr/share/fontconfig/conf.avail/45-verta-fonts.conf /etc/fonts/conf.d/45-verta-fonts.conf
 
 ### Animations: smooth but quick ############################################
 # 0.75 = every animation 25% shorter than stock Plasma.
 kset kdeglobals KDE AnimationDurationFactor 0.75
+# No bouncing busy cursor while an app starts: its icon bounces in the dock
+# or hops in the taskbar instead (that comes from TaskbarButton, kept on).
+kset klaunchrc FeedbackStyle BusyCursor false
 # Verta Motion (our own effect, /usr/share/kwin/effects/verta_motion) animates
 # windows, menus and tooltips; KDE's stock open/close effects are switched off.
 test -f /usr/share/kwin/effects/verta_motion/contents/code/main.js
@@ -173,19 +204,25 @@ GL RefractionRGBFringing 2          # 0-20: faint rainbow at the very edge
 GL RefractionExcludeWindows true    # like Apple: glass is for controls (bars, dock, menus,
                                     # popups), app windows and Launchpad stay undistorted
 GL EdgeLighting false               # its wide glow band read as a thick outline
-GL RimSpecular true                 # a fine glint where the light hits
-GL RimWidth 10                      # thinnest rim (10-40)
-GL RimSpecularScale 6               # 0-20
-GL RimSpecularTopLeft true
-GL RimSpecularTopRight false
-GL RimSpecularBottomLeft false
-GL RimSpecularBottomRight true
-# Corner radii match the Plasma style (panels 18, popups and tooltips 16), Darkly's menus
-# (10) and the windows' rounded corners (16, below).
-GL TopCornerRadius 16
-GL BottomCornerRadius 16
-GL MenuCornerRadius 10
-GL DockCornerRadius 18
+# No extra rim from the effect: it also lined the screen edges along the menu bar.
+# The Plasma style draws the one hairline rim and the lit top edge itself.
+GL RimSpecular false
+# Glass cuts its own smooth, anti-aliased corners. Plasma hands it the shape as a pixel
+# mask whose edge pixels are cut off at half coverage, so a curve of the same size
+# showed those steps. Each radius is 2 px rounder than the shape drawn on top (Plasma
+# style: panels 18, popups and tooltips 16; Darkly's menus 10; windows 16, below), which
+# puts the smooth curve just inside the mask.
+GL TopCornerRadius 18
+GL BottomCornerRadius 18
+GL MenuCornerRadius 12
+GL DockCornerRadius 20
+# Corners that touch the edge of the screen stay square: the menu bar is one flat bar
+# from edge to edge (the dock, menus, popups and windows keep their round corners).
+GL DynamicCorners true
+GL DynamicCornersExcludeDocks false
+GL DynamicCornersExcludeWindows true
+GL DynamicCornersExcludeMenus true
+GL DynamicCornersExcludeTooltips true
 
 ### Windows: rounded corners, a deep soft shadow that lifts the window in
 ### front, a faint light hairline around its edge (like glass catching the
@@ -258,6 +295,8 @@ hide_app() {
     sed -i '0,/^\[Desktop Entry\]/s//[Desktop Entry]\nNoDisplay=true/' "$f"
 }
 hide_app systemsettings.desktop                 # Verta Settings is the settings app
+hide_app kdesystemsettings.desktop              # (a second "KDE System Settings" entry)
+hide_app org.kde.kdeconnect.nonplasma.desktop   # phone link tray icon (daemon is off)
 hide_app org.kde.kinfocenter.desktop            # = Settings -> About
 hide_app btop.desktop                           # System Monitor covers these
 hide_app nvtop.desktop

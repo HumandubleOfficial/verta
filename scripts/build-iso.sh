@@ -48,8 +48,15 @@ ISO_SRC="$(find "$WORK" -name '*.iso' ! -name 'verta-branded.iso' | head -1)"
 KEY="$WORK/verta-secureboot.der"
 $SUDO podman run --rm "$IMAGE" cat /etc/pki/akmods/certs/akmods-ublue.der > "$KEY"
 
+# Verta's UI font (Inter), from the image itself, for the installer.
+FONTS="$WORK/fonts"
+mkdir -p "$FONTS"
+$SUDO podman run --rm "$IMAGE" tar -C /usr/share/fonts/rsms-inter-fonts -c \
+    Inter-Regular.ttf Inter-Italic.ttf Inter-Medium.ttf Inter-SemiBold.ttf Inter-Bold.ttf \
+    | tar -C "$FONTS" -x
+
 # Verta branding for the installer, boot menu and volume label.
-$SUDO bash "$ROOT/scripts/brand-iso.sh" "$ISO_SRC" "$WORK/verta-branded.iso" "$KEY"
+$SUDO bash "$ROOT/scripts/brand-iso.sh" "$ISO_SRC" "$WORK/verta-branded.iso" "$KEY" "$FONTS"
 
 mkdir -p "$ROOT/output"
 # Timestamped, so a new build never collides with an ISO a VM still has attached.

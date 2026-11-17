@@ -6,7 +6,8 @@ Each change replaces an exact piece of Plasma's QML. If Plasma changes those
 files in an update, a piece won't match and the build stops with an error,
 instead of shipping a lock screen that might not unlock.
 
-  - big, light clock with the date above it, like a phone (Apple style)
+  - big, bold clock in Inter Display with the date above it (Apple style)
+  - your picture and the password field low on the screen, under the clock
   - soft dark gradients so the clock and buttons read on any wallpaper
   - glass, pill-shaped password field that brightens when focused
   - round accent-coloured unlock button that grows slightly on hover
@@ -62,7 +63,7 @@ patch(LOCK / "LockScreenUi.qml", [
             property date now: new Date()
             visible: config.alwaysShowClock
             anchors.horizontalCenter: parent.horizontalCenter
-            y: Math.round(parent.height * 0.11)
+            y: Math.round(parent.height * 0.08)
             width: vertaClock.implicitWidth
             height: vertaClock.implicitHeight
             transform: Translate { id: clockSlide; y: -28 }
@@ -81,18 +82,24 @@ patch(LOCK / "LockScreenUi.qml", [
                 PlasmaComponents3.Label {
                     Layout.alignment: Qt.AlignHCenter
                     text: clock.now.toLocaleDateString(Qt.locale(), "dddd d MMMM")
-                    font.pointSize: Math.max(14, lockScreenRoot.height / 52)
+                    font.family: "Inter"
+                    font.pointSize: Math.max(14, lockScreenRoot.height / 50)
                     font.weight: Font.DemiBold
                     color: "white"
-                    opacity: 0.9
+                    opacity: 0.88
                 }
                 PlasmaComponents3.Label {
                     Layout.alignment: Qt.AlignHCenter
+                    // Inter's display cut, drawn for big sizes: the time reads
+                    // like one solid shape rather than a row of digits.
                     text: clock.now.toLocaleTimeString(Qt.locale(), Locale.ShortFormat)
-                    font.pointSize: Math.max(54, lockScreenRoot.height / 10)
-                    font.weight: Font.Light
-                    font.letterSpacing: -2
+                    font.family: "Inter Display"
+                    font.pointSize: Math.max(64, lockScreenRoot.height / 8)
+                    font.weight: Font.DemiBold
+                    font.letterSpacing: -3
+                    font.features: { "tnum": 1 }
                     color: "white"
+                    opacity: 0.94
                 }
             }
 
@@ -105,6 +112,18 @@ patch(LOCK / "LockScreenUi.qml", [
                 easing.type: Easing.OutCubic
             }
         }"""),
+
+    # Your picture and the password field sit low on the screen, under the
+    # clock, instead of in the middle of the wallpaper. They move back up
+    # while the on-screen keyboard is open so it can't cover them.
+    ("""            height: lockScreenRoot.height + Kirigami.Units.gridUnit * 3
+""",
+     """            height: lockScreenRoot.height + Kirigami.Units.gridUnit * 3
+            transform: Translate {
+                y: Keyboards.KWinVirtualKeyboard.visible ? 0 : Math.round(lockScreenRoot.height * 0.2)
+                Behavior on y { NumberAnimation { duration: Kirigami.Units.longDuration; easing.type: Easing.OutCubic } }
+            }
+"""),
 ])
 
 patch(LOCK / "MainBlock.qml", [

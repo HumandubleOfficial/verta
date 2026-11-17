@@ -16,7 +16,9 @@ MouseArea {
     id: button
 
     readonly property bool vertical: Plasmoid.formFactor === 3 // PlasmaCore.Types.Vertical
-    property bool wasExpanded: false
+    // Clicking the button while the menu is open closes the menu when the
+    // press lands (the menu loses focus), so the click must not reopen it.
+    property bool wasOpen: false
 
     Layout.minimumWidth: vertical ? -1 : height
     Layout.maximumWidth: vertical ? -1 : height
@@ -25,20 +27,20 @@ MouseArea {
 
     hoverEnabled: true
     acceptedButtons: Qt.LeftButton
-    onPressed: wasExpanded = start.expanded
-    onClicked: toggle(wasExpanded)
-
-    function toggle(was) {
+    onPressed: wasOpen = start.menuOpen || (Date.now() - start.menuClosedAt) < 300
+    onClicked: {
         if (start.launchpad) {
             start.toggleLaunchpad()
+        } else if (wasOpen) {
+            start.closeMenu()
         } else {
-            start.expanded = !was
+            start.toggleMenu()
         }
     }
 
     Keys.onPressed: event => {
         if (event.key === Qt.Key_Space || event.key === Qt.Key_Enter || event.key === Qt.Key_Return) {
-            toggle(start.expanded)
+            start.toggle()
             event.accepted = true
         }
     }
@@ -52,7 +54,7 @@ MouseArea {
         radius: Kirigami.Units.cornerRadius * 1.6
         color: Kirigami.Theme.textColor
         visible: !start.launchpad
-        opacity: start.expanded ? 0.14 : (button.containsMouse ? 0.09 : 0)
+        opacity: start.menuOpen ? 0.14 : (button.containsMouse ? 0.09 : 0)
         Behavior on opacity {
             NumberAnimation { duration: Kirigami.Units.shortDuration; easing.type: Easing.OutCubic }
         }
@@ -61,7 +63,7 @@ MouseArea {
     Kirigami.Icon {
         id: logo
         anchors.centerIn: parent
-        width: Math.round(Math.min(parent.width, parent.height) * (start.launchpad ? 0.8 : 0.56))
+        width: Math.round(Math.min(parent.width, parent.height) * (start.launchpad ? 0.8 : 0.62))
         height: width
         source: Plasmoid.icon
         active: button.containsMouse

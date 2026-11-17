@@ -273,22 +273,30 @@ def viewitem(path):
 
 
 def main():
-    # Liquid glass. Plasma uses the plain files below while the Glass effect
-    # runs (and the translucent/ copies if someone switches back to Plasma's
-    # own blur + contrast); solid/ is for a panel set to "opaque".
+    # Liquid glass. Plasma uses the translucent/ copies while a blur effect
+    # (Verta's Glass) runs, and the plain files without one; both are the same
+    # glass. solid/ is for a panel set to "opaque".
     # Menu bar, dock and taskbar: clear glass with a bright lit top edge.
     # Popups a little more tinted so text stays easy to read.
-    # One fine hairline; the Glass effect adds the glints on top.
+    # One fine hairline.
     panel = dict(rim_alpha=0.09, lit=0.22)
     dialog = dict(rim_alpha=0.09, lit=0.20)
     tooltip = dict(rim_alpha=0.08, lit=0.16)
     for variant in ("", "translucent/"):
-        # No drop shadow under panels: KWin draws it beneath the translucent
-        # dock, where its pieces met in a line across the middle. The rim
-        # and the glass edge already set the dock off the wallpaper.
+        # No drop shadows on glass: KWin also draws them beneath a translucent
+        # window, where they showed through as a line across the middle of the
+        # dock and a dark band inside every popup. The rim and the glass edge
+        # already set them off the wallpaper.
         glass(f"{variant}widgets/panel-background.svg", 18, 0.28, (4, 8, 4, 8), None, **panel)
-        glass(f"{variant}dialogs/background.svg", 16, 0.56, (8, 8, 8, 8), (28, 0.32), **dialog)
-        glass(f"{variant}widgets/tooltip.svg", 16, 0.66, (6, 8, 6, 8), (16, 0.26), **tooltip)
+        glass(f"{variant}dialogs/background.svg", 16, 0.56, (8, 8, 8, 8), None, **dialog)
+        # Every popup (Start menu, Control Center, calendar, tray) is first
+        # created with "widgets/background" and only then switched to
+        # "dialogs/background", and KSvg keeps deciding how to paint it from
+        # the first one. Without this file that was Breeze's, which can't
+        # spread the glass under the rounded edge: the edge stayed clear and
+        # the middle tinted, a hard rectangle inside every popup.
+        glass(f"{variant}widgets/background.svg", 16, 0.56, (8, 8, 8, 8), None, **dialog)
+        glass(f"{variant}widgets/tooltip.svg", 16, 0.66, (6, 8, 6, 8), None, **tooltip)
     glass("solid/widgets/panel-background.svg", 18, 0.98, (4, 8, 4, 8), (26, 0.30), lit=0.10)
     tasks("widgets/tasks.svg")
     viewitem("widgets/viewitem.svg")

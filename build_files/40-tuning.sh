@@ -50,6 +50,17 @@ for unit in rpm-ostree-countme.timer fedora-atomic-desktop-mandb-update.service;
     fi
 done
 
+### Privacy: nothing is sent anywhere unless you ask.
+# Fedora's count ping is off (above). KDE's crash reporter still shows what
+# crashed, but never uploads in the background.
+systemctl --global mask drkonqi-sentry-postman.path drkonqi-sentry-postman.timer drkonqi-sentry-postman.service
+# No "donate to KDE" or "get the browser extension" pop-ups.
+kwriteconfig6 --file /etc/xdg/kded6rc --group Module-donationmessage --key autoload false
+kwriteconfig6 --file /etc/xdg/kded6rc --group Module-browserintegrationreminder --key autoload false
+# Firefox: no telemetry, studies, sponsored tiles or "recommended" pop-ups;
+# it uses the system's file dialog (system_files/usr/lib64/firefox).
+python3 -c 'import json, sys; json.load(open(sys.argv[1]))' /usr/lib64/firefox/distribution/policies.json
+
 systemctl enable verta-flatpak-setup.service
 
 ### Updates: Verta downloads new versions by itself every day (rpm-ostree

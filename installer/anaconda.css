@@ -36,3 +36,46 @@ AnacondaSpokeWindow #nav-box GtkButton,
 AnacondaSpokeWindow #nav-box button {
     box-shadow: none;
 }
+
+/* Verta's blue instead of GNOME's for selections, checks and focus. */
+@define-color theme_selected_bg_color #2563eb;
+@define-color theme_selected_fg_color #ffffff;
+@define-color selected_bg_color #2563eb;
+
+/* Softer, rounder controls, like the installed system. */
+button,
+entry,
+spinbutton,
+combobox button {
+    border-radius: 8px;
+}
+
+/* The main action on each screen ("Begin Installation", "Done", ...). */
+button.suggested-action {
+    background-image: none;
+    background-color: @verta_accent;
+    border-color: #1d4ed8;
+    color: #ffffff;
+    box-shadow: none;
+    text-shadow: none;
+}
+button.suggested-action:hover {
+    background-color: #3b76f0;
+}
+button.suggested-action:active {
+    background-color: #1d4ed8;
+}
+button.suggested-action:disabled {
+    background-color: alpha(@verta_accent, 0.45);
+    color: alpha(#ffffff, 0.7);
+}
+
+/* Destructive actions ("Delete all", "Reclaim space") stay clearly red. */
+button.destructive-action {
+    background-image: none;
+    background-color: #e5484d;
+    border-color: #c93a3f;
+    color: #ffffff;
+    box-shadow: none;
+    text-shadow: none;
+}

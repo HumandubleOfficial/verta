@@ -11,18 +11,20 @@ bar.height = 2 * Math.ceil(gridUnit * 2.8 / 2);   // ~52 px: room for the app in
 bar.floating = true;
 bar.hiding = "none";
 bar.lengthMode = "fill";
+bar.opacity = "translucent";                    // liquid glass, even over maximised windows
 
 // Two expanding spacers either side of the start button + apps centre them.
 bar.addWidget("org.kde.plasma.panelspacer");
 
-// Verta Start (/usr/share/plasma/plasmoids/org.verta.start): pinned apps,
-// recent files, all apps and search. Opens with the Windows/Meta key too.
+// Verta Start (/usr/share/plasma/plasmoids/org.verta.start): a glass menu in
+// the middle of the screen with pinned apps, all apps and search. Opens with
+// the Windows/Meta key too.
 var start = bar.addWidget("org.verta.start");
 start.currentConfigGroup = ["General"];
 start.writeConfig("icon", "verta-logo");
 start.writeConfig("launchpad", "false");
 
-var tasks = bar.addWidget("org.kde.plasma.icontasks");
+var tasks = bar.addWidget("org.verta.dock");
 tasks.currentConfigGroup = ["General"];
 tasks.writeConfig("launchers", [
     "applications:org.kde.dolphin.desktop",
@@ -32,13 +34,7 @@ tasks.writeConfig("launchers", [
     "applications:org.kde.discover.desktop",
     "applications:org.verta.Settings.desktop"
 ].join(","));
-tasks.writeConfig("iconSpacing", "1");           // tight, evenly spaced like Windows 11
-tasks.writeConfig("taskHoverEffect", "true");     // rounded hover pill (Verta Plasma style)
-tasks.writeConfig("highlightWindows", "true");    // hover an app: its windows are spotlighted
-tasks.writeConfig("showToolTips", "true");        // live window previews on hover
-tasks.writeConfig("indicateAudioStreams", "true");
-tasks.writeConfig("groupingStrategy", "1");      // group windows of one app
-tasks.writeConfig("middleClickAction", "NewInstance");
+tasks.writeConfig("style", "taskbar");  // Verta Dock, taskbar look: hover pill, dash under open apps
 
 bar.addWidget("org.kde.plasma.panelspacer");
 

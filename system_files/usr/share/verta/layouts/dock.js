@@ -55,7 +55,7 @@ start.currentConfigGroup = ["General"];
 start.writeConfig("icon", "verta-launchpad");
 start.writeConfig("launchpad", "true");
 
-var tasks = dock.addWidget("org.kde.plasma.icontasks");
+var tasks = dock.addWidget("org.verta.dock");
 tasks.currentConfigGroup = ["General"];
 tasks.writeConfig("launchers", [
     "applications:org.kde.dolphin.desktop",
@@ -66,13 +66,6 @@ tasks.writeConfig("launchers", [
     "applications:org.kde.konsole.desktop",
     "applications:org.verta.Settings.desktop"
 ].join(","));
-tasks.writeConfig("iconSpacing", "1");
-tasks.writeConfig("taskHoverEffect", "true");
-tasks.writeConfig("highlightWindows", "true");    // hover an app: its windows are spotlighted
-tasks.writeConfig("showToolTips", "true");        // live window previews on hover
-tasks.writeConfig("indicateAudioStreams", "true");
-tasks.writeConfig("groupingStrategy", "1");
-tasks.writeConfig("middleClickAction", "NewInstance");
-tasks.writeConfig("fill", "false");               // no stretching: the dock hugs its icons
+tasks.writeConfig("style", "dock");     // Verta Dock: icons grow under the pointer, bounce on launch
 
 dock.addWidget("org.kde.plasma.trash");

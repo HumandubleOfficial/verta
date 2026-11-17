@@ -8,7 +8,7 @@
 # OS update. Already-installed apps are skipped.
 set -euo pipefail
 
-APPS_VERSION=3
+APPS_VERSION=4
 STAMP_DIR=/var/lib/verta
 STAMP="$STAMP_DIR/flatpak-setup-v${APPS_VERSION}.done"
 
@@ -37,6 +37,15 @@ for remote in fedora fedora-testing; do
 done
 
 flatpak install --system --noninteractive --assumeyes flathub "${APPS[@]}"
+
+# Flatpak apps draw their own title bars. Let them read the GTK look Plasma
+# writes for every app (~/.config/gtk-3.0 and gtk-4.0: Verta's colours and
+# its round window buttons), so they match the rest of the system instead of
+# showing GNOME's. Read-only: they can't change it.
+flatpak override --system --filesystem=xdg-config/gtk-3.0:ro --filesystem=xdg-config/gtk-4.0:ro
+# GTK 3 Flatpaks only use Plasma's GTK theme (Breeze) if it is installed for
+# Flatpak too. Only looks, so a failure here doesn't hold up the setup.
+flatpak install --system --noninteractive --assumeyes flathub org.gtk.Gtk3theme.Breeze || true
 
 # Double-clicking a Windows program opens it in Bottles, like on Windows.
 mkdir -p /etc/xdg

@@ -1,24 +1,25 @@
 /*
-    The Start menu popup.
+    The Start menu: one glass panel in the middle of the screen.
 
-      [ Search apps, files and settings                 ]
-      Pinned                                   All apps >
-      [app] [app] [app] [app] [app] [app]
-      [app] [app] [app] [app] [app] [app]
-      Recent
-      [file]                 [file]
-      ---------------------------------------------------
-      (o) Name                      settings lock sleep restart power
+      (search)  Search apps, files and settings
+      +--------------------------------------------------+
+      |  [app]   [app]   [app]   [app]   [app]   Pinned  |
+      +--------------------------------------------------+
+      All apps
+      [app]   [app]   [app]   [app]   [app]      A to Z, scrolls
+      [app]   [app]   [app]   [app]   [app]
+      (o) Name                 settings lock sleep restart power
 
-    Typing anything searches; Up/Down pick a result and Enter opens it.
-    "All apps" slides in an A-Z list. Right-click an app to pin or unpin it.
+    Typing anything searches apps, files, settings and the calculator;
+    Up/Down pick a result and Enter opens it. Down from the search field
+    walks the app grid with the arrow keys. Right-click an app to pin or
+    unpin it. No edge-to-edge bands or rules: the glass is one clean sheet.
 
     SPDX-FileCopyrightText: 2026 Verta
     SPDX-License-Identifier: GPL-2.0-or-later
 */
 import QtQuick
 import QtQuick.Layouts
-import org.kde.plasma.plasmoid
 import org.kde.plasma.components as PlasmaComponents3
 import org.kde.kirigami as Kirigami
 import org.kde.coreaddons as KCoreAddons
@@ -29,26 +30,28 @@ Item {
 
     readonly property real unit: Kirigami.Units.gridUnit
     readonly property bool searching: start.searchText.length > 0
-    property string page: "home"            // "home" or "all"
+    readonly property int columns: 5
+    readonly property real cellWidth: Math.floor(apps.width / columns)
+    readonly property real cellHeight: Math.round(unit * 5.4)
 
-    Layout.minimumWidth: unit * 32
-    Layout.preferredWidth: unit * 34
-    Layout.maximumWidth: unit * 34
-    Layout.minimumHeight: unit * 34
-    Layout.preferredHeight: unit * 36
-    Layout.maximumHeight: unit * 36
+    width: Math.round(unit * 37)
+    height: Math.round(unit * 34)
+    Layout.minimumWidth: width
+    Layout.maximumWidth: width
+    Layout.minimumHeight: height
+    Layout.maximumHeight: height
 
-    // Back to the home page, empty search, focus in the search field every
-    // time the menu opens.
+    // Every time the menu opens: empty search, top of the list, typing goes
+    // to the search field.
+    function reset() {
+        searchField.text = ""
+        apps.currentIndex = -1
+        apps.positionViewAtBeginning()
+        searchField.forceActiveFocus()
+    }
+
     Connections {
         target: start
-        function onExpandedChanged() {
-            if (start.expanded) {
-                menu.page = "home"
-                searchField.text = ""
-                searchField.forceActiveFocus()
-            }
-        }
         function onSearchTextChanged() {
             if (searchField.text !== start.searchText) {
                 searchField.text = start.searchText
@@ -63,47 +66,39 @@ Item {
     ColumnLayout {
         anchors.fill: parent
         anchors.margins: Kirigami.Units.largeSpacing
-        spacing: Kirigami.Units.largeSpacing
+        anchors.topMargin: Kirigami.Units.smallSpacing
+        spacing: Kirigami.Units.smallSpacing
 
-        // --- search ------------------------------------------------------
+        // --- search: big and quiet, like a title ---------------------------
         PlasmaComponents3.TextField {
             id: searchField
             Layout.fillWidth: true
-            Layout.leftMargin: Kirigami.Units.smallSpacing
-            Layout.rightMargin: Kirigami.Units.smallSpacing
-            implicitHeight: Math.round(menu.unit * 2.3)
-            leftPadding: Math.round(menu.unit * 2.2)
+            implicitHeight: Math.round(menu.unit * 2.8)
+            leftPadding: Math.round(menu.unit * 2.3)
             placeholderText: "Search apps, files and settings"
+            font.pointSize: Kirigami.Theme.defaultFont.pointSize * 1.45
+            font.weight: Font.Normal
             focus: true
             onTextChanged: start.searchText = text
 
-            background: Rectangle {
-                radius: height / 2
-                color: Qt.alpha(Kirigami.Theme.textColor, searchField.activeFocus ? 0.10 : 0.07)
-                border.width: 1
-                border.color: searchField.activeFocus ? Qt.alpha(Kirigami.Theme.highlightColor, 0.8)
-                                                      : Qt.alpha(Kirigami.Theme.textColor, 0.10)
-                Behavior on color { ColorAnimation { duration: Kirigami.Units.shortDuration } }
-                Behavior on border.color { ColorAnimation { duration: Kirigami.Units.shortDuration } }
-
+            background: Item {
                 Kirigami.Icon {
                     anchors.verticalCenter: parent.verticalCenter
-                    x: Math.round(menu.unit * 0.75)
-                    width: Kirigami.Units.iconSizes.small
+                    x: Math.round(menu.unit * 0.4)
+                    width: Kirigami.Units.iconSizes.smallMedium
                     height: width
                     source: "search"
-                    opacity: 0.6
+                    opacity: searchField.activeFocus ? 0.85 : 0.6
                 }
             }
 
             Keys.onPressed: event => {
-                const view = menu.searching ? results : (menu.page === "all" ? allApps : pinned)
                 if (event.key === Qt.Key_Down) {
                     if (menu.searching) {
                         results.incrementCurrentIndex()
                     } else {
-                        view.forceActiveFocus()
-                        if (view.currentIndex < 0) view.currentIndex = 0
+                        apps.forceActiveFocus()
+                        if (apps.currentIndex < 0) apps.currentIndex = 0
                     }
                     event.accepted = true
                 } else if (event.key === Qt.Key_Up && menu.searching) {
@@ -117,10 +112,8 @@ Item {
                 } else if (event.key === Qt.Key_Escape) {
                     if (text.length > 0) {
                         text = ""
-                    } else if (menu.page !== "home") {
-                        menu.page = "home"
                     } else {
-                        start.expanded = false
+                        start.closeMenu()
                     }
                     event.accepted = true
                 }
@@ -134,138 +127,62 @@ Item {
             Layout.fillHeight: true
             clip: true
 
-            // Home: pinned apps and recent files.
+            // Home: pinned apps on a soft card, then every app A to Z.
             Page {
-                id: home
-                shown: !menu.searching && menu.page === "home"
-                direction: -1
+                shown: !menu.searching
 
-                ColumnLayout {
+                PlasmaComponents3.ScrollView {
                     anchors.fill: parent
-                    spacing: Kirigami.Units.smallSpacing
-
-                    SectionHeader {
-                        text: "Pinned"
-                        actionText: "All apps"
-                        actionIcon: "go-next"
-                        onActionClicked: menu.page = "all"
-                    }
+                    PlasmaComponents3.ScrollBar.horizontal.policy: PlasmaComponents3.ScrollBar.AlwaysOff
 
                     GridView {
-                        id: pinned
-                        Layout.fillWidth: true
-                        Layout.preferredHeight: cellHeight * 3
-                        Layout.maximumHeight: cellHeight * 3
-                        interactive: contentHeight > height
-                        clip: true
-                        cellWidth: Math.floor(width / 6)
-                        cellHeight: Math.round(menu.unit * 5.2)
-                        model: start.rootModel.favoritesModel
+                        id: apps
+                        model: start.allAppsModel
+                        cellWidth: menu.cellWidth
+                        cellHeight: menu.cellHeight
                         currentIndex: -1
                         keyNavigationEnabled: true
                         boundsBehavior: Flickable.StopAtBounds
+                        highlightMoveDuration: 0
                         delegate: AppTile {}
                         Keys.onReturnPressed: if (currentIndex >= 0) start.launch(model, currentIndex)
+                        Keys.onEnterPressed: if (currentIndex >= 0) start.launch(model, currentIndex)
                         Keys.onUpPressed: event => {
-                            if (currentIndex < 6) { searchField.forceActiveFocus(); currentIndex = -1 }
+                            if (currentIndex < menu.columns) { searchField.forceActiveFocus(); currentIndex = -1 }
                             else moveCurrentIndexUp()
                         }
+                        Keys.onEscapePressed: start.closeMenu()
 
-                        PlasmaComponents3.Label {
-                            anchors.centerIn: parent
-                            visible: pinned.count === 0
-                            text: "Right-click any app in All apps to pin it here"
-                            opacity: 0.6
-                        }
-                    }
+                        header: ColumnLayout {
+                            width: apps.width
+                            spacing: Kirigami.Units.smallSpacing
 
-                    SectionHeader {
-                        text: "Recent"
-                        Layout.topMargin: Kirigami.Units.smallSpacing
-                    }
-
-                    GridView {
-                        id: recent
-                        Layout.fillWidth: true
-                        Layout.fillHeight: true
-                        interactive: false
-                        clip: true
-                        cellWidth: Math.floor(width / 2)
-                        cellHeight: Math.round(menu.unit * 2.8)
-                        model: start.recentModel
-                        delegate: AppRow {
-                            width: GridView.view.cellWidth
-                            height: GridView.view.cellHeight
-                            visible: index < 6
-                            isCurrent: false
-                            subtitle: model.description || ""
-                            onActivated: start.launch(start.recentModel, index)
-                        }
-
-                        PlasmaComponents3.Label {
-                            anchors.centerIn: parent
-                            visible: recent.count === 0
-                            text: "Files you open will show up here"
-                            opacity: 0.6
-                        }
-                    }
-                }
-            }
-
-            // All apps, A to Z.
-            Page {
-                id: all
-                shown: !menu.searching && menu.page === "all"
-                direction: 1
-
-                ColumnLayout {
-                    anchors.fill: parent
-                    spacing: Kirigami.Units.smallSpacing
-
-                    SectionHeader {
-                        text: "All apps"
-                        actionText: "Back"
-                        actionIcon: "go-previous"
-                        actionFirst: true
-                        onActionClicked: menu.page = "home"
-                    }
-
-                    PlasmaComponents3.ScrollView {
-                        Layout.fillWidth: true
-                        Layout.fillHeight: true
-                        PlasmaComponents3.ScrollBar.horizontal.policy: PlasmaComponents3.ScrollBar.AlwaysOff
-
-                        ListView {
-                            id: allApps
-                            model: start.allAppsModel
-                            currentIndex: -1
-                            keyNavigationEnabled: true
-                            boundsBehavior: Flickable.StopAtBounds
-                            highlightMoveDuration: 0
-                            section.property: "display"
-                            section.criteria: ViewSection.FirstCharacter
-                            section.delegate: PlasmaComponents3.Label {
-                                required property string section
-                                width: ListView.view.width
-                                height: Math.round(menu.unit * 1.5)
-                                leftPadding: Kirigami.Units.largeSpacing
-                                verticalAlignment: Text.AlignBottom
-                                bottomPadding: 2
-                                text: section.toUpperCase()
-                                font.weight: Font.DemiBold
-                                color: Kirigami.Theme.highlightColor
+                            SectionLabel {
+                                text: "Pinned"
+                                visible: pinned.count > 0
                             }
-                            delegate: AppRow {
-                                width: ListView.view.width
-                                height: Math.round(menu.unit * 2.4)
-                                isCurrent: ListView.isCurrentItem && allApps.activeFocus
-                                pinnable: true
-                                onActivated: start.launch(start.allAppsModel, index)
+                            Rectangle {
+                                Layout.fillWidth: true
+                                Layout.preferredHeight: pinned.height + Kirigami.Units.smallSpacing * 2
+                                visible: pinned.count > 0
+                                radius: Kirigami.Units.cornerRadius * 2.2
+                                color: Qt.alpha(Kirigami.Theme.textColor, 0.055)
+
+                                GridView {
+                                    id: pinned
+                                    anchors.centerIn: parent
+                                    width: parent.width
+                                    height: Math.ceil(count / menu.columns) * cellHeight
+                                    interactive: false
+                                    cellWidth: Math.floor(width / menu.columns)
+                                    cellHeight: menu.cellHeight
+                                    model: start.rootModel.favoritesModel
+                                    delegate: AppTile { pinnedTile: true }
+                                }
                             }
-                            Keys.onReturnPressed: if (currentIndex >= 0) start.launch(model, currentIndex)
-                            Keys.onUpPressed: event => {
-                                if (currentIndex <= 0) { searchField.forceActiveFocus(); currentIndex = -1 }
-                                else decrementCurrentIndex()
+                            SectionLabel {
+                                text: "All apps"
+                                Layout.topMargin: Kirigami.Units.smallSpacing
                             }
                         }
                     }
@@ -274,9 +191,7 @@ Item {
 
             // Search results.
             Page {
-                id: search
                 shown: menu.searching
-                direction: 0
 
                 PlasmaComponents3.ScrollView {
                     anchors.fill: parent
@@ -309,145 +224,65 @@ Item {
             }
         }
 
-        // --- footer: you, settings and power ---------------------------------
-        Rectangle {
+        // --- you, settings and power -------------------------------------
+        RowLayout {
             Layout.fillWidth: true
-            Layout.leftMargin: -Kirigami.Units.largeSpacing
-            Layout.rightMargin: -Kirigami.Units.largeSpacing
-            Layout.bottomMargin: -Kirigami.Units.largeSpacing
-            implicitHeight: Math.round(menu.unit * 3.4)
-            color: Qt.alpha(Kirigami.Theme.textColor, 0.04)
+            Layout.preferredHeight: Math.round(menu.unit * 2.6)
+            Layout.leftMargin: Kirigami.Units.smallSpacing
+            spacing: Kirigami.Units.smallSpacing * 2
 
-            Rectangle {
-                anchors { left: parent.left; right: parent.right; top: parent.top }
-                height: 1
-                color: Qt.alpha(Kirigami.Theme.textColor, 0.08)
+            KirigamiComponents.Avatar {
+                Layout.preferredWidth: Math.round(menu.unit * 1.8)
+                Layout.preferredHeight: Layout.preferredWidth
+                name: kuser.fullName || kuser.loginName
+                source: kuser.faceIconUrl
+            }
+            PlasmaComponents3.Label {
+                Layout.fillWidth: true
+                text: kuser.fullName || kuser.loginName
+                font.weight: Font.DemiBold
+                elide: Text.ElideRight
             }
 
-            RowLayout {
-                anchors.fill: parent
-                anchors.leftMargin: Kirigami.Units.largeSpacing * 2
-                anchors.rightMargin: Kirigami.Units.largeSpacing * 2
-                spacing: Kirigami.Units.smallSpacing * 2
-
-                KirigamiComponents.Avatar {
-                    Layout.preferredWidth: Math.round(menu.unit * 1.9)
-                    Layout.preferredHeight: Layout.preferredWidth
-                    name: kuser.fullName || kuser.loginName
-                    source: kuser.faceIconUrl
-                }
-                PlasmaComponents3.Label {
-                    Layout.fillWidth: true
-                    text: kuser.fullName || kuser.loginName
-                    font.weight: Font.DemiBold
-                    elide: Text.ElideRight
-                }
-
-                RoundButton {
-                    icon: "org.verta.Settings"
-                    tip: "Settings"
-                    onClicked: start.launch(start.launcher, 0)
-                }
-                Repeater {
-                    model: start.systemModel
-                    delegate: RoundButton {
-                        visible: ["lock-screen", "suspend", "reboot", "shutdown"].includes(model.favoriteId)
-                        icon: model.decoration
-                        tip: model.display
-                        onClicked: start.launch(start.systemModel, index)
-                    }
+            RoundButton {
+                icon: "org.verta.Settings"
+                tip: "Settings"
+                onClicked: start.launch(start.launcher, 0)
+            }
+            Repeater {
+                model: start.systemModel
+                delegate: RoundButton {
+                    visible: ["lock-screen", "suspend", "reboot", "shutdown"].includes(model.favoriteId)
+                    icon: model.decoration
+                    tip: model.display
+                    onClicked: start.launch(start.systemModel, index)
                 }
             }
         }
     }
 
-    // A page that slides and fades in from its side (direction -1: left,
-    // 1: right, 0: rises from below).
+    // A page that fades and rises into place.
     component Page: Item {
         property bool shown: false
-        property int direction: 0
         width: pages.width
         height: pages.height
         visible: opacity > 0
         opacity: shown ? 1 : 0
         enabled: shown
         transform: Translate {
-            x: shown ? 0 : direction * menu.unit * 3
-            y: shown || direction !== 0 ? 0 : menu.unit
-            Behavior on x { NumberAnimation { duration: Kirigami.Units.longDuration; easing.type: Easing.OutCubic } }
+            y: shown ? 0 : menu.unit * 0.6
             Behavior on y { NumberAnimation { duration: Kirigami.Units.longDuration; easing.type: Easing.OutCubic } }
         }
         Behavior on opacity { NumberAnimation { duration: Kirigami.Units.longDuration; easing.type: Easing.OutCubic } }
     }
 
-    // "Pinned ............ All apps >"
-    component SectionHeader: RowLayout {
-        id: header
-        property alias text: title.text
-        property string actionText: ""
-        property string actionIcon: ""
-        property bool actionFirst: false
-        signal actionClicked()
+    // "Pinned", "All apps".
+    component SectionLabel: PlasmaComponents3.Label {
         Layout.fillWidth: true
-        Layout.leftMargin: Kirigami.Units.largeSpacing
-        Layout.rightMargin: Kirigami.Units.smallSpacing
-        layoutDirection: actionFirst ? Qt.RightToLeft : Qt.LeftToRight
-
-        PlasmaComponents3.Label {
-            id: title
-            Layout.fillWidth: true
-            horizontalAlignment: header.actionFirst ? Text.AlignRight : Text.AlignLeft
-            font.weight: Font.DemiBold
-            font.pointSize: Kirigami.Theme.defaultFont.pointSize * 1.05
-        }
-        PillButton {
-            visible: header.actionText !== ""
-            text: header.actionText
-            icon: header.actionIcon
-            iconFirst: header.actionFirst
-            onClicked: header.actionClicked()
-        }
-    }
-
-    // Small rounded text button ("All apps >", "< Back").
-    component PillButton: MouseArea {
-        id: pill
-        property string text
-        property string icon
-        property bool iconFirst: false
-        implicitWidth: row.implicitWidth + menu.unit
-        implicitHeight: Math.round(menu.unit * 1.6)
-        hoverEnabled: true
-        cursorShape: Qt.PointingHandCursor
-        Rectangle {
-            anchors.fill: parent
-            radius: height / 2
-            color: Kirigami.Theme.textColor
-            opacity: pill.pressed ? 0.16 : (pill.containsMouse ? 0.10 : 0.06)
-            Behavior on opacity { NumberAnimation { duration: Kirigami.Units.shortDuration } }
-        }
-        RowLayout {
-            id: row
-            anchors.centerIn: parent
-            spacing: 2
-            layoutDirection: pill.iconFirst ? Qt.RightToLeft : Qt.LeftToRight
-            PlasmaComponents3.Label {
-                text: pill.text
-                font.pointSize: Kirigami.Theme.smallFont.pointSize
-            }
-            Kirigami.Icon {
-                Layout.preferredWidth: Kirigami.Units.iconSizes.small
-                Layout.preferredHeight: Layout.preferredWidth
-                source: pill.icon
-                // nudges toward where it leads on hover
-                transform: Translate {
-                    x: pill.containsMouse ? (pill.iconFirst ? -2 : 2) : 0
-                    Behavior on x { NumberAnimation { duration: Kirigami.Units.shortDuration; easing.type: Easing.OutCubic } }
-                }
-            }
-        }
-        scale: pressed ? 0.96 : 1
-        Behavior on scale { NumberAnimation { duration: Kirigami.Units.shortDuration; easing.type: Easing.OutCubic } }
+        Layout.leftMargin: Kirigami.Units.smallSpacing
+        topPadding: Kirigami.Units.smallSpacing
+        font.weight: Font.DemiBold
+        opacity: 0.75
     }
 
     // Round icon button with a tooltip (footer).

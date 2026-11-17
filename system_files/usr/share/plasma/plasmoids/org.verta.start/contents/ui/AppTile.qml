@@ -1,7 +1,7 @@
 /*
-    A pinned app in the Start menu grid: icon over its name. Tiles drift up
-    into place one after another when the menu opens; the icon lifts on hover
-    and squishes when clicked. Right-click to unpin.
+    An app in the Start menu grids (pinned, and all apps): icon over its name.
+    Tiles drift up into place one after another when the menu opens; the icon
+    lifts on hover and squishes when clicked. Right-click to pin or unpin.
 
     SPDX-FileCopyrightText: 2026 Verta
     SPDX-License-Identifier: GPL-2.0-or-later
@@ -17,8 +17,13 @@ Item {
     width: GridView.view.cellWidth
     height: GridView.view.cellHeight
 
+    property bool pinnedTile: false         // in the Pinned grid (else All apps)
     readonly property int itemIndex: index
     readonly property bool highlighted: mouse.containsMouse || (GridView.isCurrentItem && GridView.view.activeFocus)
+    readonly property string favoriteId: model.favoriteId || ""
+    // (count is read so this updates when pins change)
+    readonly property bool isPinned: pinnedTile || (favoriteId !== "" && start.rootModel.favoritesModel.count >= 0
+                                                    && start.rootModel.favoritesModel.isFavorite(favoriteId))
 
     // Entrance: a short stagger, then rise and fade in.
     opacity: 0
@@ -40,7 +45,7 @@ Item {
     Component.onCompleted: enter()
     Connections {
         target: start
-        function onExpandedChanged() { if (start.expanded) tile.enter() }
+        function onMenuOpenChanged() { if (start.menuOpen) tile.enter() }
     }
 
     Rectangle {
@@ -59,8 +64,11 @@ Item {
 
         Kirigami.Icon {
             Layout.alignment: Qt.AlignHCenter
-            Layout.preferredWidth: Math.round(Kirigami.Units.gridUnit * 2.3)
+            // Big, like a phone's home screen. Not rounded down to the next
+            // stock icon size (that drew them at 32 px).
+            Layout.preferredWidth: Math.min(Math.round(Kirigami.Units.gridUnit * 3), tile.height * 0.6)
             Layout.preferredHeight: Layout.preferredWidth
+            roundToIconSize: false
             source: model.decoration
             animated: false
             scale: mouse.pressed ? 0.9 : (tile.highlighted ? 1.08 : 1)
@@ -110,13 +118,23 @@ Item {
         PlasmaComponents3.MenuItem {
             text: "Move to front"
             icon.name: "go-first"
+            visible: tile.pinnedTile
+            height: visible ? implicitHeight : 0
             enabled: tile.itemIndex > 0
             onClicked: tile.GridView.view.model.moveRow(tile.itemIndex, 0)
         }
         PlasmaComponents3.MenuItem {
-            text: "Unpin from Start"
-            icon.name: "window-unpin"
-            onClicked: start.rootModel.favoritesModel.removeFavorite(model.favoriteId)
+            text: tile.isPinned ? "Unpin from Start" : "Pin to Start"
+            icon.name: tile.isPinned ? "window-unpin" : "window-pin"
+            visible: tile.favoriteId !== ""
+            height: visible ? implicitHeight : 0
+            onClicked: {
+                if (tile.isPinned) {
+                    start.rootModel.favoritesModel.removeFavorite(tile.favoriteId)
+                } else {
+                    start.rootModel.favoritesModel.addFavorite(tile.favoriteId)
+                }
+            }
         }
     }
 }

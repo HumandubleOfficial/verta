@@ -5,12 +5,14 @@
 #   - boot menu entries "Install Verta" and volume label "Verta"
 #   - puts Universal Blue's Secure Boot key on the ISO for the kickstart to enrol
 #
-#   scripts/brand-iso.sh <input.iso> <output.iso> <secureboot-key.der>
+#   - Verta's font (Inter) in the installer, if a folder of Inter .ttf files is given
+#
+#   scripts/brand-iso.sh <input.iso> <output.iso> <secureboot-key.der> [inter-fonts-dir]
 #
 # Called by build-iso.sh. Needs root (loop mount) and xorriso, squashfs-tools, mtools.
 set -euo pipefail
 
-IN="$1"; OUT="$2"; KEY="$3"
+IN="$1"; OUT="$2"; KEY="$3"; FONTS="${4:-}"
 NEW_LABEL="Verta"
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
@@ -42,6 +44,13 @@ cp "$ROOT/installer/pixmaps/anaconda_header.png" "$PIXDIR/anaconda_header.png"
 for css in "$PIXDIR/fedora.css" "$PIXDIR"/*/fedora-*.css; do
     [ -f "$css" ] && cp "$ROOT/installer/anaconda.css" "$css"
 done
+
+# Font: Inter, like the installed system (same fontconfig rule).
+if [ -n "$FONTS" ] && ls "$FONTS"/Inter-*.ttf >/dev/null 2>&1; then
+    mkdir -p "$S2/usr/share/fonts/verta-inter" "$S2/etc/fonts/conf.d"
+    cp "$FONTS"/Inter-*.ttf "$S2/usr/share/fonts/verta-inter/"
+    cp "$ROOT/system_files/usr/share/fontconfig/conf.avail/45-verta-fonts.conf" "$S2/etc/fonts/conf.d/"
+fi
 
 # Text: product name without the Fedora version number.
 patch_py() {  # file, sed expression

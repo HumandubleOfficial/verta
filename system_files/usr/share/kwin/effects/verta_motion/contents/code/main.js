@@ -42,12 +42,17 @@ class VertaMotion {
         this.popupOut = animationTime(effect.readConfig("PopupOutDuration", 110));
     }
 
-    // "window", "popup", "tooltip" or null (leave alone).
+    // "window", "panel", "popup", "tooltip" or null (leave alone).
     static kind(window) {
         if (window.windowClass == "plasmashell plasmashell"
                 || window.windowClass == "plasmashell org.kde.plasmashell") {
-            // Plasma's own popups (Start menu, tray) slide out of the taskbar
-            // with the Sliding Popups effect; only its dialogs animate here.
+            // The Start menu opens in the middle of the screen: it rises and
+            // grows into place. Plasma's other popups (tray, calendar) slide
+            // out of the bar with the Sliding Popups effect; only its dialogs
+            // animate here.
+            if (window.caption == "Verta Start") {
+                return "panel";
+            }
             return window.hasDecoration ? "window" : null;
         }
         const tags = skipped[window.windowClass];
@@ -106,6 +111,14 @@ class VertaMotion {
                 { type: Effect.Translation, from: { value1: 0, value2: 22 } },
                 { type: Effect.Opacity, from: 0 },
             ];
+        } else if (kind === "panel") {
+            duration = this.windowIn;
+            curve = QEasingCurve.OutQuint;
+            animations = [
+                { type: Effect.Scale, from: 0.94 },
+                { type: Effect.Translation, from: { value1: 0, value2: 28 } },
+                { type: Effect.Opacity, from: 0 },
+            ];
         } else if (kind === "popup") {
             duration = this.popupIn;
             curve = QEasingCurve.OutCubic;
@@ -146,7 +159,7 @@ class VertaMotion {
                 { type: Effect.Translation, to: { value1: 0, value2: 10 }, curve: QEasingCurve.OutQuart },
                 { type: Effect.Opacity, to: 0, curve: QEasingCurve.OutCubic },
             ];
-        } else if (kind === "popup") {
+        } else if (kind === "popup" || kind === "panel") {
             duration = this.popupOut;
             animations = [
                 { type: Effect.Scale, to: 0.97 },

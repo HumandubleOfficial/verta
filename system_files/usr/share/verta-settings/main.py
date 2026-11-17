@@ -233,27 +233,40 @@ class Backend(QObject):
             return "dock"
         if "plugin=org.verta.menu" in text:
             return "dock"
-        return "taskbar" if "plugin=org.kde.plasma.icontasks" in text else "dock"
+        return "taskbar" if "plugin=org.verta.start" in text else "dock"
 
     @Slot(str)
     def setDesktopLayout(self, name):
-        if name not in ("dock", "taskbar"):
+        if name not in ("dock", "taskbar") or getattr(self, "_switching", False):
             return
         try:
             body = (LAYOUTS / f"{name}.js").read_text()
         except OSError:
             return
-        # Replace the current panels with the chosen layout's.
-        script = "panels().forEach(function (p) { p.remove(); });\n" + body
-        self.run("layout", ["qdbus-qt6", "org.kde.plasmashell", "/PlasmaShell",
-                            "org.kde.PlasmaShell.evaluateScript", script])
-        # Apps' menus: in the menu bar (Dock) or back in their windows (Taskbar).
-        sh(["qdbus-qt6", "org.kde.kded6", "/kded", "org.kde.kded6." +
-            ("loadModule" if name == "dock" else "unloadModule"), "appmenu"])
-        # Window buttons: on the left with the Dock, on the right with the Taskbar.
-        kwrite("kwinrc", "org.kde.kdecoration2", "ButtonsOnLeft", "XIA" if name == "dock" else "")
-        kwrite("kwinrc", "org.kde.kdecoration2", "ButtonsOnRight", "" if name == "dock" else "IAX")
-        kwin_reconfigure()
+        shell = ["qdbus-qt6", "org.kde.plasmashell", "/PlasmaShell", "org.kde.PlasmaShell.evaluateScript"]
+        # Apps' menus: in the menu bar (Dock) or back in their windows
+        # (Taskbar). The menu service is up before the menu bar that uses it.
+        if name == "dock":
+            sh(["qdbus-qt6", "org.kde.kded6", "/kded", "org.kde.kded6.loadModule", "appmenu"])
+        # Swap the panels in two steps: take the old ones away, and build the
+        # new ones once Plasma has finished tearing those down. Doing both in
+        # one go had Plasma build a bar while the old one was still being
+        # destroyed, which could crash it (seen going from Taskbar to Dock).
+        sh(shell + ["panels().forEach(function (p) { p.remove(); });"])
+
+        self._switching = True
+
+        def build():
+            self._switching = False
+            self.run("layout", shell + [body])
+            if name == "taskbar":
+                sh(["qdbus-qt6", "org.kde.kded6", "/kded", "org.kde.kded6.unloadModule", "appmenu"])
+            # Window buttons: on the left with the Dock, on the right with the Taskbar.
+            kwrite("kwinrc", "org.kde.kdecoration2", "ButtonsOnLeft", "XIA" if name == "dock" else "")
+            kwrite("kwinrc", "org.kde.kdecoration2", "ButtonsOnRight", "" if name == "dock" else "IAX")
+            kwin_reconfigure()
+
+        QTimer.singleShot(1500, build)
 
     @Slot(result=float)
     def animationSpeed(self):
