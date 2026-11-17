@@ -43,6 +43,7 @@
 #include <QWindow>
 
 #include <KWindowEffects>
+#include <notificationmanager/server.h>
 
 class ShellHelper : public QObject
 {
@@ -70,6 +71,11 @@ public Q_SLOTS:
     Q_SCRIPTABLE void toggleCalendar()
     {
         Q_EMIT flyoutRequested(QStringLiteral("calendar"));
+    }
+    // Opens Quick Settings on one of its lists: "wifi", "bluetooth", "sound".
+    Q_SCRIPTABLE void showQuickSettings(const QString &page)
+    {
+        Q_EMIT flyoutRequested(QStringLiteral("quickSettings:") + page);
     }
 
 public:
@@ -114,6 +120,26 @@ public:
         QPainterPath path;
         path.addRoundedRect(QRectF(x, y, width, height), radius, radius);
         const QRegion region(path.toFillPolygon().toPolygon());
+        KWindowEffects::enableBlurBehind(window, true, region);
+        KWindowEffects::enableBackgroundContrast(window, true, 1.0, 1.0, 1.4, region);
+    }
+
+    // The same behind several rounded rectangles at once (stacked notification
+    // pop-ups): rects is a list of {x, y, width, height}.
+    Q_INVOKABLE void setBlurRects(QWindow *window, const QVariantList &rects, qreal radius)
+    {
+        if (!window) {
+            return;
+        }
+        QRegion region;
+        for (const QVariant &v : rects) {
+            const QVariantMap r = v.toMap();
+            QPainterPath path;
+            path.addRoundedRect(QRectF(r.value(QStringLiteral("x")).toReal(), r.value(QStringLiteral("y")).toReal(),
+                                       r.value(QStringLiteral("width")).toReal(), r.value(QStringLiteral("height")).toReal()),
+                                radius, radius);
+            region += QRegion(path.toFillPolygon().toPolygon());
+        }
         KWindowEffects::enableBlurBehind(window, true, region);
         KWindowEffects::enableBackgroundContrast(window, true, 1.0, 1.0, 1.4, region);
     }
@@ -470,6 +496,13 @@ int main(int argc, char *argv[])
         return 0;
     }
     bus.registerObject(QStringLiteral("/Shell"), &helper, QDBusConnection::ExportScriptableSlots);
+
+    // Notifications: Plasma's notification server lived in its system tray,
+    // which went with Plasma's panels. Verta Shell takes over
+    // org.freedesktop.Notifications; its QML shows the pop-ups and the list.
+    if (!NotificationManager::Server::self().init()) {
+        qWarning("verta-shell: another app is already the notification server");
+    }
 
     QQmlApplicationEngine engine;
     // "Host" in QML ("Shell" is the name of the shell's own root type).

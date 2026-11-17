@@ -221,9 +221,12 @@ Window {
             }
             onContainsMouseChanged: {
                 const qs = bar.shell.quickSettings
-                const net = qs.network !== "" ? qs.network : "Not connected"
-                bar.hover(status, net + "
-Volume: " + (qs.muted ? "muted" : qs.volume + "%"))
+                let text = (qs.network !== "" ? qs.network : "Not connected")
+                    + "\nVolume: " + (qs.muted ? "muted" : qs.volume + "%")
+                if (qs.battery >= 0) {
+                    text += "\nBattery: " + qs.battery + "%" + (qs.charging ? ", charging" : "")
+                }
+                bar.hover(status, text)
             }
             onPressedChanged: if (pressed) tip.close()
             Row {
@@ -243,13 +246,21 @@ Volume: " + (qs.muted ? "muted" : qs.volume + "%"))
                     isMask: true
                     color: Theme.text
                 }
+                Kirigami.Icon {
+                    readonly property var qs: bar.shell.quickSettings
+                    visible: qs.battery >= 0
+                    width: 16; height: 16
+                    source: qs.batteryIcon
+                    isMask: true
+                    color: qs.battery >= 0 && qs.battery <= 10 && !qs.charging ? "#e81123" : Theme.text
+                }
             }
         }
 
         MouseArea {
             id: clockButton
             property date now: new Date()
-            width: clockColumn.implicitWidth + 20
+            width: clockRow.implicitWidth + 20
             height: 40
             anchors.verticalCenter: parent.verticalCenter
             hoverEnabled: true
@@ -266,11 +277,19 @@ Volume: " + (qs.muted ? "muted" : qs.volume + "%"))
                 area: clockButton
                 lit: bar.openHere(bar.shell.calendar)
             }
-            onContainsMouseChanged: bar.hover(clockButton, clockButton.now.toLocaleDateString(Qt.locale(), Locale.LongFormat))
+            onContainsMouseChanged: {
+                const unread = bar.shell.calendar.unread
+                bar.hover(clockButton, clockButton.now.toLocaleDateString(Qt.locale(), Locale.LongFormat)
+                          + (unread > 0 ? "\n" + unread + (unread === 1 ? " new notification" : " new notifications") : ""))
+            }
             onPressedChanged: if (pressed) tip.close()
+            Row {
+                id: clockRow
+                anchors.centerIn: parent
+                spacing: 10
             Column {
                 id: clockColumn
-                anchors.centerIn: parent
+                anchors.verticalCenter: parent.verticalCenter
                 Text {
                     id: clockTime
                     anchors.right: parent.right
@@ -287,6 +306,35 @@ Volume: " + (qs.muted ? "muted" : qs.volume + "%"))
                     font.pixelSize: 12
                     color: Theme.text
                 }
+            }
+            // New notifications: a count in an accent circle; a crossed-out
+            // bell while Do not disturb is on.
+            Rectangle {
+                readonly property int unread: bar.shell.calendar.unread
+                visible: unread > 0 && !bar.shell.quickSettings.dnd
+                anchors.verticalCenter: parent.verticalCenter
+                width: Math.max(18, unreadText.implicitWidth + 8)
+                height: 18
+                radius: 9
+                color: Theme.accent
+                Text {
+                    id: unreadText
+                    anchors.centerIn: parent
+                    text: parent.unread > 99 ? "99+" : parent.unread
+                    font.family: Theme.font
+                    font.pixelSize: 11
+                    font.weight: Font.DemiBold
+                    color: Theme.accentText
+                }
+            }
+            Kirigami.Icon {
+                visible: bar.shell.quickSettings.dnd
+                anchors.verticalCenter: parent.verticalCenter
+                width: 16; height: 16
+                source: "notifications-disabled"
+                isMask: true
+                color: Theme.text
+            }
             }
         }
 

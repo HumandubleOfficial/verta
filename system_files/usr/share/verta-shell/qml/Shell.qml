@@ -23,6 +23,13 @@ QtObject {
         shell: root
     }
 
+    // Notification pop-ups (Verta Shell is the notification server).
+    property NotificationPopups notificationPopups: NotificationPopups {
+        shell: root
+        dnd: root.quickSettings.dnd
+        suppressed: root.startMenu.shown || root.quickSettings.shown || root.calendar.shown
+    }
+
     property Instantiator taskbars: Instantiator {
         model: Qt.application.screens
         delegate: Taskbar {
@@ -39,8 +46,20 @@ QtObject {
             root.toggleStart(root.startMenu.screen || Qt.application.screens[0], false)
         }
         function onFlyoutRequested(name) {
-            const flyout = root[name]
-            root.toggleFlyout(flyout, flyout.screen || Qt.application.screens[0])
+            const [which, page] = name.split(":")
+            const flyout = root[which]
+            if (!flyout) {
+                return
+            }
+            if (page !== undefined) {
+                // Straight to a list in Quick Settings; stays open if it is.
+                if (!flyout.shown) {
+                    root.toggleFlyout(flyout, flyout.screen || Qt.application.screens[0])
+                }
+                flyout.page = page
+            } else {
+                root.toggleFlyout(flyout, flyout.screen || Qt.application.screens[0])
+            }
         }
     }
 

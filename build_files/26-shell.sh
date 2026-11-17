@@ -4,7 +4,8 @@
 # and headers are removed again afterwards, as in 25-glass.sh.
 set -xeuo pipefail
 
-BUILD_DEPS=(gcc-c++ pkgconf-pkg-config qt6-qtbase-devel qt6-qtdeclarative-devel kf6-kwindowsystem-devel)
+# plasma-workspace-devel: the headers of libnotificationmanager (the notification server).
+BUILD_DEPS=(gcc-c++ pkgconf-pkg-config qt6-qtbase-devel qt6-qtdeclarative-devel kf6-kwindowsystem-devel plasma-workspace-devel)
 
 rpm -qa --qf '%{NAME}\n' | sort -u > /tmp/shell-before.txt
 dnf5 -y install --setopt=install_weak_deps=False "${BUILD_DEPS[@]}"
@@ -15,7 +16,7 @@ cp "$CTX/shell/main.cpp" "$SRC/"
 # shellcheck disable=SC2046
 g++ -std=c++17 -O2 -fPIC -I"$SRC" "$SRC/main.cpp" -o /usr/bin/verta-shell \
     $(pkg-config --cflags --libs Qt6Gui Qt6Qml Qt6Quick Qt6DBus) \
-    -I/usr/include/KF6/KWindowSystem -lKF6WindowSystem
+    -I/usr/include/KF6/KWindowSystem -lKF6WindowSystem -lnotificationmanager
 rm -rf "$SRC"
 
 rpm -qa --qf '%{NAME}\n' | sort -u > /tmp/shell-after.txt

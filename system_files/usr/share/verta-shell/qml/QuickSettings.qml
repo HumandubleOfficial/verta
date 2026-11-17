@@ -1,36 +1,80 @@
 /*
-    Quick Settings, Windows 11 style: opens from the network and sound icons
-    on the taskbar. Toggles for Wi-Fi, Bluetooth, Game mode (performance
-    power profile), Night light, Do not disturb and Dark mode; a volume
-    slider (the speaker mutes); what's playing; and a way into Settings.
+    Quick Settings, Windows 11 style: opens from the network, sound and
+    battery icons on the taskbar (or Windows key + A).
+
+    Toggles for Wi-Fi, Bluetooth, Game mode (performance power profile),
+    Night light, Do not disturb and Dark mode. Wi-Fi and Bluetooth have a ›
+    that opens their list (pick a network and type its password, connect a
+    headset); the volume slider has one for the sound output. Brightness on
+    laptops and screens that support it, what's playing, and the battery and
+    Settings along the bottom.
 
     SPDX-FileCopyrightText: 2026 Verta
     SPDX-License-Identifier: GPL-2.0-or-later
 */
 import QtQuick
 import QtQuick.Layouts
-import QtQuick.Controls as QQC2
 import org.kde.kirigami as Kirigami
 import org.kde.bluezqt as BluezQt
 import org.kde.notificationmanager as NotificationManager
 import org.kde.plasma.private.mpris as Mpris
+import org.kde.plasma.networkmanagement as PlasmaNM
+import org.kde.plasma.private.brightnesscontrolplugin as BrightnessControl
 
 Flyout {
     id: qs
 
     panelWidth: 360
-    panelHeight: content.implicitHeight + 32 + footer.height
+    panelHeight: (page === "" ? content.implicitHeight + 32 : 440) + footer.height
 
-    property bool hasWifi: false
-    property bool wifiOn: false
+    // "" (the toggles), "wifi", "bluetooth" or "sound".
+    property string page: ""
+    onShownChanged: if (!shown) page = ""
+    onPageChanged: {
+        pageIn.restart()
+        if (page === "wifi") nmHandler.requestScan()
+    }
+
+    // Network (Plasma's NetworkManager library).
+    PlasmaNM.Handler { id: nmHandler }
+    PlasmaNM.EnabledConnections { id: nmEnabled }
+    PlasmaNM.AvailableDevices { id: nmDevices }
+    PlasmaNM.NetworkStatus {
+        id: nmStatus
+        onActiveConnectionsChanged: qs.readNetwork()
+    }
+    readonly property bool hasWifi: nmDevices.wirelessDeviceAvailable
+    readonly property bool wifiOn: nmEnabled.wirelessEnabled
     property string network: ""
+
+    // Bluetooth.
+    readonly property bool hasBluetooth: BluezQt.Manager.adapters.length > 0
+    readonly property bool btOn: BluezQt.Manager.bluetoothOperational
+
+    // Sound (wpctl talks to PipeWire directly).
     property int volume: 0
     property bool muted: false
+
+    // Battery (laptops, handhelds): -1 when there is none.
+    property int battery: -1
+    property bool charging: false
+    readonly property string batteryIcon: {
+        if (battery < 0) return ""
+        const level = ("00" + Math.min(100, Math.round(battery / 10) * 10)).slice(-3)
+        return "battery-" + level + (charging ? "-charging" : "")
+    }
+
+    // Screen brightness (laptops, and monitors that allow it over DDC/CI).
+    BrightnessControl.ScreenBrightnessControl {
+        id: screenBrightness
+        Component.onCompleted: {
+            try { isSilent = true } catch (e) {}   // no on-screen pop-up while dragging
+        }
+    }
+
     property string profile: ""
     property bool nightLight: false
     property bool darkMode: true
-    readonly property bool hasBluetooth: BluezQt.Manager.adapters.length > 0
-    readonly property bool btOn: BluezQt.Manager.bluetoothOperational
 
     NotificationManager.Settings {
         id: notificationSettings
@@ -49,12 +93,16 @@ Flyout {
     onOpened: refresh()
     Component.onCompleted: refresh()
 
-    // The taskbar's speaker icon follows volume changes made elsewhere.
+    // The taskbar's speaker and battery icons follow changes made elsewhere.
     Timer {
         interval: 4000
         running: true
         repeat: true
-        onTriggered: qs.readVolume()
+        property int ticks: 0
+        onTriggered: {
+            qs.readVolume()
+            if (++ticks % 8 === 0) qs.readBattery()
+        }
     }
     function readVolume() {
         Host.sh("wpctl get-volume @DEFAULT_AUDIO_SINK@", out => {
@@ -63,22 +111,31 @@ Flyout {
             qs.muted = out.indexOf("[MUTED]") >= 0
         })
     }
-
-    function refresh() {
-        readVolume()
+    function readBattery() {
+        Host.sh("for b in /sys/class/power_supply/BAT*; do [ -r \"$b/capacity\" ] && cat \"$b/capacity\" \"$b/status\" && break; done", out => {
+            const lines = out.split("\n")
+            const level = parseInt(lines[0])
+            qs.battery = isNaN(level) ? -1 : level
+            qs.charging = lines.length > 1 && (lines[1] === "Charging" || lines[1] === "Full")
+        })
+    }
+    function readNetwork() {
         Host.sh("nmcli -t -f TYPE,STATE,CONNECTION device", out => {
-            let wifi = false, name = ""
+            let name = ""
             out.split("\n").forEach(line => {
                 const f = line.split(":")
-                if (f[0] === "wifi") wifi = true
                 if (f[1] === "connected" && name === "" && (f[0] === "wifi" || f[0] === "ethernet")) {
                     name = f.slice(2).join(":")
                 }
             })
-            qs.hasWifi = wifi
             qs.network = name
         })
-        Host.sh("nmcli radio wifi", out => { qs.wifiOn = out === "enabled" })
+    }
+
+    function refresh() {
+        readVolume()
+        readBattery()
+        readNetwork()
         Host.sh("busctl get-property net.hadess.PowerProfiles /net/hadess/PowerProfiles net.hadess.PowerProfiles ActiveProfile", out => {
             const m = out.match(/"([^"]+)"/)
             qs.profile = m ? m[1] : ""
@@ -97,8 +154,7 @@ Flyout {
     }
 
     function toggleWifi() {
-        wifiOn = !wifiOn
-        Host.sh("nmcli radio wifi " + (wifiOn ? "on" : "off"), () => refreshSoon.restart())
+        nmHandler.enableWireless(!wifiOn)
     }
     function toggleBluetooth() {
         BluezQt.Manager.bluetoothBlocked = btOn
@@ -146,190 +202,220 @@ Flyout {
         Host.sh("wpctl set-mute @DEFAULT_AUDIO_SINK@ " + (muted ? "1" : "0"))
     }
 
-    ColumnLayout {
-        id: content
+    // Pages slide in a little from the side they come from.
+    ParallelAnimation {
+        id: pageIn
+        NumberAnimation { target: pages; property: "opacity"; from: 0; to: 1; duration: Theme.normal; easing.type: Easing.OutCubic }
+        NumberAnimation { target: pageShift; property: "x"; from: qs.page === "" ? -16 : 16; to: 0; duration: Theme.normal; easing.type: Easing.OutCubic }
+    }
+
+    Item {
+        id: pages
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.top: parent.top
-        anchors.margins: 16
-        spacing: 16
+        anchors.bottom: footer.top
+        transform: Translate { id: pageShift }
 
-        GridLayout {
-            Layout.fillWidth: true
-            columns: 3
-            rowSpacing: 14
-            columnSpacing: 12
+        ColumnLayout {
+            id: content
+            visible: qs.page === ""
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.top: parent.top
+            anchors.margins: 16
+            spacing: 14
 
-            QuickToggle {
-                visible: qs.hasWifi
-                iconName: qs.wifiOn ? "network-wireless-signal-excellent" : "network-wireless-disconnected"
-                label: qs.wifiOn && qs.network !== "" ? qs.network : "Wi-Fi"
-                checked: qs.wifiOn
-                onToggled: qs.toggleWifi()
-            }
-            QuickToggle {
-                visible: qs.hasBluetooth
-                iconName: qs.btOn ? "network-bluetooth" : "network-bluetooth-inactive"
-                label: "Bluetooth"
-                checked: qs.btOn
-                onToggled: qs.toggleBluetooth()
-            }
-            QuickToggle {
-                visible: qs.profile !== ""
-                iconName: "input-gamepad"
-                label: "Game mode"
-                checked: qs.profile === "performance"
-                onToggled: qs.toggleGameMode()
-            }
-            QuickToggle {
-                iconName: "redshift-status-on"
-                label: "Night light"
-                checked: qs.nightLight
-                onToggled: qs.toggleNightLight()
-            }
-            QuickToggle {
-                iconName: "notifications-disabled"
-                label: "Do not disturb"
-                checked: qs.dnd
-                onToggled: qs.toggleDnd()
-            }
-            QuickToggle {
-                iconName: "weather-clear-night"
-                label: "Dark mode"
-                checked: qs.darkMode
-                onToggled: qs.toggleDarkMode()
-            }
-        }
-
-        // Volume.
-        RowLayout {
-            Layout.fillWidth: true
-            spacing: 10
-            MouseArea {
-                id: speaker
-                Layout.preferredWidth: 32
-                Layout.preferredHeight: 32
-                hoverEnabled: true
-                onClicked: qs.toggleMute()
-                Accessible.name: qs.muted ? "Unmute" : "Mute"
-                Rectangle {
-                    anchors.fill: parent
-                    radius: Theme.controlRadius
-                    color: speaker.containsMouse ? Theme.hover : "transparent"
-                }
-                Kirigami.Icon {
-                    anchors.centerIn: parent
-                    width: 18; height: 18
-                    isMask: true
-                    color: Theme.text
-                    source: qs.muted || qs.volume === 0 ? "audio-volume-muted"
-                          : qs.volume < 34 ? "audio-volume-low"
-                          : qs.volume < 67 ? "audio-volume-medium" : "audio-volume-high"
-                }
-            }
-            QQC2.Slider {
-                id: volumeSlider
+            GridLayout {
                 Layout.fillWidth: true
-                from: 0
-                to: 100
-                stepSize: 1
-                value: qs.volume
-                onMoved: qs.setVolume(Math.round(value))
-                background: Rectangle {
-                    x: volumeSlider.leftPadding
-                    y: volumeSlider.topPadding + volumeSlider.availableHeight / 2 - height / 2
-                    width: volumeSlider.availableWidth
-                    height: 4
-                    radius: 2
-                    color: Theme.dark ? Qt.rgba(1, 1, 1, 0.5) : Qt.rgba(0, 0, 0, 0.45)
-                    Rectangle {
-                        width: volumeSlider.visualPosition * parent.width
-                        height: parent.height
-                        radius: 2
-                        color: Theme.accent
-                    }
-                }
-                handle: Rectangle {
-                    x: volumeSlider.leftPadding + volumeSlider.visualPosition * (volumeSlider.availableWidth - width)
-                    y: volumeSlider.topPadding + volumeSlider.availableHeight / 2 - height / 2
-                    width: 20; height: 20
-                    radius: 10
-                    color: Theme.dark ? "#454545" : "#ffffff"
-                    border.width: 1
-                    border.color: Theme.stroke
-                    Rectangle {
-                        anchors.centerIn: parent
-                        width: volumeSlider.pressed ? 10 : volumeSlider.hovered ? 14 : 12
-                        height: width
-                        radius: width / 2
-                        color: Theme.accent
-                        Behavior on width { NumberAnimation { duration: Theme.fast } }
-                    }
-                }
-            }
-            Text {
-                Layout.preferredWidth: 32
-                horizontalAlignment: Text.AlignRight
-                text: qs.volume
-                font.family: Theme.font
-                font.pixelSize: 12
-                color: Theme.textDim
-            }
-        }
+                columns: 3
+                rowSpacing: 14
+                columnSpacing: 12
 
-        // What's playing.
-        Rectangle {
-            Layout.fillWidth: true
-            Layout.preferredHeight: 64
-            visible: qs.hasMedia
-            radius: Theme.controlRadius
-            color: Theme.card
-            border.width: 1
-            border.color: Theme.stroke
-            RowLayout {
-                anchors.fill: parent
-                anchors.margins: 10
-                spacing: 10
-                Image {
-                    Layout.preferredWidth: 44
-                    Layout.preferredHeight: 44
-                    source: qs.player ? qs.player.artUrl : ""
-                    fillMode: Image.PreserveAspectCrop
-                    visible: status === Image.Ready
+                QuickToggle {
+                    visible: qs.hasWifi
+                    iconName: qs.wifiOn ? "network-wireless-signal-excellent" : "network-wireless-disconnected"
+                    label: qs.wifiOn && qs.network !== "" ? qs.network : "Wi-Fi"
+                    checked: qs.wifiOn
+                    hasMore: true
+                    onToggled: qs.toggleWifi()
+                    onMore: qs.page = "wifi"
                 }
-                ColumnLayout {
+                QuickToggle {
+                    visible: qs.hasBluetooth
+                    iconName: qs.btOn ? "network-bluetooth" : "network-bluetooth-inactive"
+                    label: "Bluetooth"
+                    checked: qs.btOn
+                    hasMore: true
+                    onToggled: qs.toggleBluetooth()
+                    onMore: qs.page = "bluetooth"
+                }
+                QuickToggle {
+                    visible: qs.profile !== ""
+                    iconName: "input-gamepad"
+                    label: "Game mode"
+                    checked: qs.profile === "performance"
+                    onToggled: qs.toggleGameMode()
+                }
+                QuickToggle {
+                    iconName: "redshift-status-on"
+                    label: "Night light"
+                    checked: qs.nightLight
+                    onToggled: qs.toggleNightLight()
+                }
+                QuickToggle {
+                    iconName: "notifications-disabled"
+                    label: "Do not disturb"
+                    checked: qs.dnd
+                    onToggled: qs.toggleDnd()
+                }
+                QuickToggle {
+                    iconName: "weather-clear-night"
+                    label: "Dark mode"
+                    checked: qs.darkMode
+                    onToggled: qs.toggleDarkMode()
+                }
+            }
+
+            // Brightness, one slider per screen that allows it.
+            Repeater {
+                model: screenBrightness.isBrightnessAvailable ? screenBrightness.displays : null
+                SliderRow {
+                    required property string displayName
+                    required property string label
+                    required property int brightness
+                    required property int maxBrightness
                     Layout.fillWidth: true
-                    spacing: 0
-                    Text {
-                        Layout.fillWidth: true
-                        elide: Text.ElideRight
-                        text: qs.player ? qs.player.track : ""
-                        font.family: Theme.font
-                        font.pixelSize: 13
-                        font.weight: Font.DemiBold
-                        color: Theme.text
-                    }
-                    Text {
-                        Layout.fillWidth: true
-                        elide: Text.ElideRight
-                        text: qs.player ? qs.player.artist : ""
-                        font.family: Theme.font
-                        font.pixelSize: 12
-                        color: Theme.textDim
-                    }
+                    iconName: "brightness-high"
+                    iconLabel: "Brightness" + (label !== "" ? ", " + label : "")
+                    value: maxBrightness > 0 ? brightness * 100 / maxBrightness : 0
+                    minimum: 1
+                    onMoved: v => screenBrightness.setBrightness(displayName, Math.max(1, Math.round(v * maxBrightness / 100)))
                 }
-                MediaButton { iconName: "media-skip-backward"; onClicked: qs.player.Previous() }
-                MediaButton {
-                    iconName: qs.player && qs.player.playbackStatus === Mpris.PlaybackStatus.Playing ? "media-playback-pause" : "media-playback-start"
-                    onClicked: qs.player.PlayPause()
+            }
+
+            SliderRow {
+                Layout.fillWidth: true
+                iconName: qs.muted || qs.volume === 0 ? "audio-volume-muted"
+                        : qs.volume < 34 ? "audio-volume-low"
+                        : qs.volume < 67 ? "audio-volume-medium" : "audio-volume-high"
+                iconLabel: qs.muted ? "Unmute" : "Mute"
+                value: qs.volume
+                hasMore: true
+                moreLabel: "Choose a sound output"
+                onMoved: v => qs.setVolume(v)
+                onIconClicked: qs.toggleMute()
+                onMore: qs.page = "sound"
+            }
+
+            // What's playing.
+            Rectangle {
+                Layout.fillWidth: true
+                Layout.preferredHeight: 64
+                visible: qs.hasMedia
+                radius: Theme.controlRadius
+                color: Theme.card
+                border.width: 1
+                border.color: Theme.stroke
+                RowLayout {
+                    anchors.fill: parent
+                    anchors.margins: 10
+                    spacing: 10
+                    Image {
+                        Layout.preferredWidth: 44
+                        Layout.preferredHeight: 44
+                        source: qs.player ? qs.player.artUrl : ""
+                        fillMode: Image.PreserveAspectCrop
+                        visible: status === Image.Ready
+                    }
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        spacing: 0
+                        Text {
+                            Layout.fillWidth: true
+                            elide: Text.ElideRight
+                            text: qs.player ? qs.player.track : ""
+                            font.family: Theme.font
+                            font.pixelSize: 13
+                            font.weight: Font.DemiBold
+                            color: Theme.text
+                        }
+                        Text {
+                            Layout.fillWidth: true
+                            elide: Text.ElideRight
+                            text: qs.player ? qs.player.artist : ""
+                            font.family: Theme.font
+                            font.pixelSize: 12
+                            color: Theme.textDim
+                        }
+                    }
+                    IconButton { iconName: "media-skip-backward"; onClicked: qs.player.Previous(); Accessible.name: "Previous" }
+                    IconButton {
+                        readonly property bool playing: qs.player && qs.player.playbackStatus === Mpris.PlaybackStatus.Playing
+                        iconName: playing ? "media-playback-pause" : "media-playback-start"
+                        onClicked: qs.player.PlayPause()
+                        Accessible.name: playing ? "Pause" : "Play"
+                    }
+                    IconButton { iconName: "media-skip-forward"; onClicked: qs.player.Next(); Accessible.name: "Next" }
                 }
-                MediaButton { iconName: "media-skip-forward"; onClicked: qs.player.Next() }
             }
         }
 
+        DetailPage {
+            anchors.fill: parent
+            visible: qs.page === "wifi"
+            title: "Wi-Fi"
+            hasSwitch: true
+            switchOn: qs.wifiOn
+            placeholder: qs.wifiOn ? "" : "Wi-Fi is turned off"
+            links: [{ text: "More Wi-Fi settings", program: "kcmshell6", args: ["kcm_networkmanagement"] }]
+            onBack: qs.page = ""
+            onSwitched: qs.toggleWifi()
+            onLinkActivated: qs.close()
+            WifiList {
+                anchors.fill: parent
+                handler: nmHandler
+            }
+        }
+
+        DetailPage {
+            anchors.fill: parent
+            visible: qs.page === "bluetooth"
+            title: "Bluetooth"
+            hasSwitch: true
+            switchOn: qs.btOn
+            placeholder: !qs.btOn ? "Bluetooth is turned off"
+                       : btList.pairedCount === 0 ? "No devices yet. Add one to see it here." : ""
+            links: [
+                { text: "Add a device", program: "bluedevil-wizard", args: [] },
+                { text: "More Bluetooth settings", program: "kcmshell6", args: ["kcm_bluetooth"] }
+            ]
+            onBack: qs.page = ""
+            onSwitched: qs.toggleBluetooth()
+            onLinkActivated: qs.close()
+            BluetoothList {
+                id: btList
+                anchors.fill: parent
+            }
+        }
+
+        DetailPage {
+            anchors.fill: parent
+            visible: qs.page === "sound"
+            title: "Sound output"
+            placeholder: soundList.count === 0 ? "No sound outputs found" : ""
+            links: [{ text: "More sound settings", program: "verta-settings", args: ["--page", "sound"] }]
+            onBack: qs.page = ""
+            onLinkActivated: qs.close()
+            SoundList {
+                id: soundList
+                anchors.fill: parent
+                onChosen: Qt.callLater(qs.readVolume)
+            }
+        }
     }
 
-    // Footer strip: what you're connected to, and Settings.
+    // Footer strip: battery (or the network), and Settings.
     Rectangle {
         id: footer
         anchors.left: parent.left
@@ -352,82 +438,115 @@ Flyout {
             Kirigami.Icon {
                 Layout.preferredWidth: 16
                 Layout.preferredHeight: 16
-                source: qs.network !== "" ? "network-connect" : "network-disconnect"
+                source: qs.battery >= 0 ? qs.batteryIcon : qs.network !== "" ? "network-connect" : "network-disconnect"
                 isMask: true
                 color: Theme.textDim
             }
             Text {
                 Layout.fillWidth: true
-                text: qs.network !== "" ? qs.network : "Not connected"
+                text: qs.battery >= 0 ? qs.battery + "%" + (qs.charging ? " · charging" : "")
+                    : qs.network !== "" ? qs.network : "Not connected"
                 elide: Text.ElideRight
                 font.family: Theme.font
                 font.pixelSize: 12
                 color: Theme.textDim
             }
-            MouseArea {
-                id: settingsButton
-                Layout.preferredWidth: 32
-                Layout.preferredHeight: 32
-                hoverEnabled: true
+            IconButton {
+                iconName: "configure"
                 Accessible.name: "Settings"
                 onClicked: {
                     Host.run("verta-settings", [])
                     qs.close()
-                }
-                Rectangle {
-                    anchors.fill: parent
-                    radius: Theme.controlRadius
-                    color: settingsButton.containsMouse ? Theme.hover : "transparent"
-                }
-                Kirigami.Icon {
-                    anchors.centerIn: parent
-                    width: 16; height: 16
-                    source: "configure"
-                    isMask: true
-                    color: Theme.text
                 }
             }
         }
     }
 
     // A Windows 11 quick action: a rounded button that fills with the
-    // accent colour when on, its name underneath.
+    // accent colour when on, its name underneath. With hasMore, the right
+    // part of the button is a › that opens a list instead.
     component QuickToggle: ColumnLayout {
         id: toggle
         property string iconName
         property string label
         property bool checked: false
+        property bool hasMore: false
         signal toggled()
+        signal more()
         Layout.fillWidth: true
         Layout.preferredWidth: 1
         spacing: 6
 
-        MouseArea {
-            id: toggleButton
+        Item {
             Layout.fillWidth: true
             Layout.preferredHeight: 48
-            hoverEnabled: true
-            onClicked: toggle.toggled()
-            Accessible.name: toggle.label
-            Accessible.role: Accessible.CheckBox
-            Accessible.checked: toggle.checked
+
             Rectangle {
                 anchors.fill: parent
                 radius: Theme.controlRadius
-                color: toggle.checked ? (toggleButton.containsMouse ? Qt.lighter(Theme.accent, 1.08) : Theme.accent)
-                     : toggleButton.containsMouse ? Theme.hover : Theme.card
+                color: toggle.checked ? Theme.accent : Theme.card
                 border.width: toggle.checked ? 0 : 1
                 border.color: Theme.stroke
                 Behavior on color { ColorAnimation { duration: Theme.fast } }
             }
-            Kirigami.Icon {
-                anchors.centerIn: parent
-                width: 18; height: 18
-                source: toggle.iconName
-                isMask: true
-                color: toggle.checked ? Theme.accentText : Theme.text
-                scale: toggleButton.pressed ? 0.86 : 1
-                Behavior on scale { NumberAnimation { duration: 110 } }
+            MouseArea {
+                id: toggleButton
+                anchors.left: parent.left
+                anchors.top: parent.top
+                anchors.bottom: parent.bottom
+                width: toggle.hasMore ? parent.width - moreButton.width : parent.width
+                hoverEnabled: true
+                onClicked: toggle.toggled()
+                Accessible.name: toggle.label
+                Accessible.role: Accessible.CheckBox
+                Accessible.checked: toggle.checked
+                Rectangle {
+                    anchors.fill: parent
+                    topLeftRadius: Theme.controlRadius
+                    bottomLeftRadius: Theme.controlRadius
+                    topRightRadius: toggle.hasMore ? 0 : Theme.controlRadius
+                    bottomRightRadius: toggle.hasMore ? 0 : Theme.controlRadius
+                    color: toggleButton.containsMouse ? (toggle.checked ? Qt.rgba(1, 1, 1, 0.12) : Theme.hover) : "transparent"
+                }
+                Kirigami.Icon {
+                    anchors.centerIn: parent
+                    width: 18; height: 18
+                    source: toggle.iconName
+                    isMask: true
+                    color: toggle.checked ? Theme.accentText : Theme.text
+                    scale: toggleButton.pressed ? 0.86 : 1
+                    Behavior on scale { NumberAnimation { duration: 110 } }
+                }
+            }
+            MouseArea {
+                id: moreButton
+                visible: toggle.hasMore
+                anchors.right: parent.right
+                anchors.top: parent.top
+                anchors.bottom: parent.bottom
+                width: 30
+                hoverEnabled: true
+                onClicked: toggle.more()
+                Accessible.name: toggle.label + " list"
+                Accessible.role: Accessible.Button
+                Rectangle {
+                    anchors.fill: parent
+                    topRightRadius: Theme.controlRadius
+                    bottomRightRadius: Theme.controlRadius
+                    color: moreButton.containsMouse ? (toggle.checked ? Qt.rgba(1, 1, 1, 0.12) : Theme.hover) : "transparent"
+                }
+                Rectangle {   // divider between the two halves
+                    width: 1
+                    height: parent.height
+                    color: toggle.checked ? Qt.rgba(0, 0, 0, 0.18) : Theme.stroke
+                }
+                Kirigami.Icon {
+                    anchors.centerIn: parent
+                    width: 12; height: 12
+                    source: "go-next"
+                    isMask: true
+                    color: toggle.checked ? Theme.accentText : Theme.text
+                }
             }
         }
         Text {
@@ -437,26 +556,6 @@ Flyout {
             text: toggle.label
             font.family: Theme.font
             font.pixelSize: 12
-            color: Theme.text
-        }
-    }
-
-    component MediaButton: MouseArea {
-        id: mediaButton
-        property string iconName
-        Layout.preferredWidth: 30
-        Layout.preferredHeight: 30
-        hoverEnabled: true
-        Rectangle {
-            anchors.fill: parent
-            radius: Theme.controlRadius
-            color: mediaButton.containsMouse ? Theme.hover : "transparent"
-        }
-        Kirigami.Icon {
-            anchors.centerIn: parent
-            width: 16; height: 16
-            source: mediaButton.iconName
-            isMask: true
             color: Theme.text
         }
     }

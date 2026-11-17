@@ -1,6 +1,7 @@
 /*
-    The calendar that opens from the clock, Windows 11 style: today's date
-    on top, then the month with arrows to page through it. Today is a filled
+    What opens from the clock, Windows 11 style: your notifications on top
+    (click one to open it, × to remove it, or clear them all), then today's
+    date and the month with arrows to page through it. Today is a filled
     accent circle; days from the months either side are dimmed.
 
     SPDX-FileCopyrightText: 2026 Verta
@@ -9,11 +10,12 @@
 import QtQuick
 import QtQuick.Layouts
 import org.kde.kirigami as Kirigami
+import org.kde.notificationmanager as NotificationManager
 
 Flyout {
     id: cal
 
-    panelWidth: 334
+    panelWidth: 360
     panelHeight: content.implicitHeight + 1
 
     property date today: new Date()
@@ -21,7 +23,31 @@ Flyout {
     property int shownMonth: today.getMonth()
     readonly property int firstDay: Qt.locale().firstDayOfWeek   // 0 = Sunday
 
+    // Everything that came in: the pop-ups end up here.
+    NotificationManager.Notifications {
+        id: history
+        showExpired: true
+        showDismissed: true
+        showJobs: false
+        sortMode: NotificationManager.Notifications.SortByDate
+        groupMode: NotificationManager.Notifications.GroupDisabled
+    }
+    // The count on the clock: what came in since the list was last opened.
+    readonly property int unread: history.unreadNotificationsCount
+    readonly property int invokeAndClose: 1
+
+    function clearAll() {
+        history.clear(1)                     // ClearExpired
+        for (let i = history.count - 1; i >= 0; i--) {
+            history.close(history.index(i, 0))
+        }
+    }
+
+    // Without a "last read" time nothing counts as new.
+    Component.onCompleted: history.lastRead = new Date()
+    onShownChanged: if (!shown) history.lastRead = new Date()
     onOpened: {
+        history.lastRead = new Date()
         today = new Date()
         shownYear = today.getFullYear()
         shownMonth = today.getMonth()
@@ -55,6 +81,92 @@ Flyout {
         anchors.right: parent.right
         anchors.top: parent.top
         spacing: 0
+
+        // Notifications.
+        RowLayout {
+            Layout.fillWidth: true
+            Layout.leftMargin: 16
+            Layout.rightMargin: 10
+            Layout.topMargin: 10
+            Layout.bottomMargin: 6
+            Text {
+                Layout.fillWidth: true
+                text: "Notifications"
+                font.family: Theme.font
+                font.pixelSize: 14
+                font.weight: Font.DemiBold
+                color: Theme.text
+            }
+            PillButton {
+                visible: history.count > 0
+                implicitWidth: 72
+                implicitHeight: 26
+                text: "Clear all"
+                onClicked: cal.clearAll()
+            }
+        }
+        Text {
+            Layout.fillWidth: true
+            Layout.leftMargin: 16
+            Layout.bottomMargin: 14
+            visible: history.count === 0
+            text: "No new notifications"
+            font.family: Theme.font
+            font.pixelSize: 13
+            color: Theme.textDim
+        }
+        ListView {
+            id: notificationList
+            Layout.fillWidth: true
+            Layout.leftMargin: 10
+            Layout.rightMargin: 10
+            Layout.bottomMargin: 10
+            Layout.preferredHeight: Math.min(contentHeight, 380)
+            visible: history.count > 0
+            clip: true
+            spacing: 6
+            boundsBehavior: Flickable.StopAtBounds
+            model: history
+            remove: Transition {
+                NumberAnimation { property: "opacity"; to: 0; duration: Theme.fast }
+            }
+            displaced: Transition {
+                NumberAnimation { properties: "y"; duration: Theme.normal; easing.type: Easing.OutCubic }
+            }
+            delegate: NotificationCard {
+                required property var model
+                required property int index
+                width: notificationList.width
+                color: hovered ? Theme.hover : Theme.card
+                showTime: true
+                created: model.created || new Date()
+                appName: model.applicationName || ""
+                appIcon: model.applicationIconName || ""
+                image: model.image || model.iconName || ""
+                summary: model.summary || ""
+                body: model.body || ""
+                actionNames: model.expired ? [] : (model.actionNames || [])
+                actionLabels: model.actionLabels || []
+                closable: true
+                function modelIndex() { return history.index(index, 0) }
+                onActivated: {
+                    if (model.hasDefaultAction && !model.expired) {
+                        history.invokeDefaultAction(modelIndex(), cal.invokeAndClose)
+                        cal.close()
+                    }
+                }
+                onCloseClicked: history.close(modelIndex())
+                onActionInvoked: name => {
+                    history.invokeAction(modelIndex(), name, cal.invokeAndClose)
+                    cal.close()
+                }
+            }
+        }
+        Rectangle {
+            Layout.fillWidth: true
+            Layout.preferredHeight: 1
+            color: Theme.divider
+        }
 
         // Today, e.g. "Tuesday, 17 November".
         Text {
